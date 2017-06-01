@@ -1,0 +1,136 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Project:</h2>
+E:\ÏîÄ¿ÎÄµµ\Seraph\STM32 Project\SSP3220170516\SSP32\MDK\ssp32.uvproj
+Project File Date:  05/15/2017
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling delay.c...
+compiling key.c...
+compiling led.c...
+compiling main.c...
+compiling usart.c...
+..\User\src\usart.c(112): warning:  #1293-D: assignment in condition
+compiling Com4004.c...
+..\User\src\Com4004.c(12): warning:  #1293-D: assignment in condition
+..\User\src\Com4004.c(152): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(157): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(161): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(165): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(170): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(174): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(178): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(183): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(187): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(192): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(197): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(202): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(206): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(210): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(218): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(223): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(228): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(233): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(243): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(248): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(895): warning:  #177-D: variable "k" was declared but never referenced
+..\User\src\Com4004.c(1115): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1204): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1331): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
+..\User\src\Com4004.c(1357): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
+..\User\src\Com4004.c(1367): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1375): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1452): warning:  #167-D: argument of type "char *" is incompatible with parameter of type "u8 *"
+compiling timer.c...
+compiling Com1010.c...
+..\User\src\Com1010.c(107): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com1010.c(124): error:  #29: expected an expression
+..\User\src\Com1010.c(125): error:  #127: expected a statement
+"..\OBJ\ssp32.axf" - 2 Errors, 31 Warning(s).
+Target not created
+Build target 'Target 1'
+compiling Com1010.c...
+..\User\src\Com1010.c(107): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+linking...
+Program Size: Code=30012 RO-data=492 RW-data=128 ZI-data=57760  
+"..\OBJ\ssp32.axf" - 0 Errors, 1 Warning(s).
+Build target 'Target 1'
+compiling Com4004.c...
+..\User\src\Com4004.c(12): warning:  #1293-D: assignment in condition
+..\User\src\Com4004.c(152): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(157): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(161): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(165): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(170): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(174): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(178): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(183): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(187): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(192): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(197): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(202): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(206): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(210): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(218): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(223): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(228): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(233): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(243): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(248): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(895): warning:  #177-D: variable "k" was declared but never referenced
+..\User\src\Com4004.c(1115): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1204): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1331): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
+..\User\src\Com4004.c(1357): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
+..\User\src\Com4004.c(1367): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1375): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1452): warning:  #167-D: argument of type "char *" is incompatible with parameter of type "u8 *"
+linking...
+Program Size: Code=30012 RO-data=492 RW-data=128 ZI-data=57760  
+"..\OBJ\ssp32.axf" - 0 Errors, 29 Warning(s).
+Build target 'Target 1'
+compiling delay.c...
+compiling key.c...
+compiling led.c...
+compiling main.c...
+compiling usart.c...
+..\User\src\usart.c(112): warning:  #1293-D: assignment in condition
+compiling Com4004.c...
+..\User\src\Com4004.c(12): warning:  #1293-D: assignment in condition
+..\User\src\Com4004.c(152): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(157): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(161): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(165): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(170): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(174): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(178): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(183): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(187): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(192): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(197): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(202): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(206): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(210): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(218): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(223): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(228): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(233): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(243): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(248): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(895): warning:  #177-D: variable "k" was declared but never referenced
+..\User\src\Com4004.c(1115): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1204): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1331): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
+..\User\src\Com4004.c(1357): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
+..\User\src\Com4004.c(1367): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1375): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+..\User\src\Com4004.c(1452): warning:  #167-D: argument of type "char *" is incompatible with parameter of type "u8 *"
+compiling timer.c...
+compiling Com1010.c...
+..\User\src\Com1010.c(107): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+linking...
+Program Size: Code=30012 RO-data=492 RW-data=128 ZI-data=57760  
+"..\OBJ\ssp32.axf" - 0 Errors, 31 Warning(s).

@@ -1,0 +1,195 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Project:</h2>
+D:\STM32 Project\SSP32\MDK\ssp32.uvproj
+Project File Date:  04/27/2017
+
+<h2>Output:</h2>
+Build target 'Target 1'
+compiling delay.c...
+compiling key.c...
+compiling led.c...
+compiling main.c...
+compiling stm32f10x_it.c...
+compiling sys.c...
+compiling usart.c...
+compiling cJSON.c...
+..\User\src\cJSON.c(56): warning:  #1293-D: assignment in condition
+        if (!(copy = (char*)cJSON_malloc(len))) return 0;
+..\User\src\cJSON.c(221): warning:  #1293-D: assignment in condition
+        ptr=str;while ((token=*ptr) && ++len) {if (strchr("\"\\\b\f\n\r\t",token)) len++; else if (token<32) len+=5;ptr++;}
+..\User\src\cJSON.c(338): warning:  #1293-D: assignment in condition
+                if (!(new_item=cJSON_New_Item())) return 0;     /* memory fail */
+..\User\src\cJSON.c(428): warning:  #1293-D: assignment in condition
+                if (!(new_item=cJSON_New_Item()))       return 0; /* memory fail */
+..\User\src\cJSON.c: 4 warnings, 0 errors
+compiling malloc.c...
+compiling Com4004.c...
+..\User\src\Com4004.c(167): warning:  #177-D: variable "fmt" was declared but never referenced
+        cJSON *root,*fmt,*img,*thm,*fld;char *out;int i;        /* declare a few. */
+..\User\src\Com4004.c(167): warning:  #177-D: variable "img" was declared but never referenced
+        cJSON *root,*fmt,*img,*thm,*fld;char *out;int i;        /* declare a few. */
+..\User\src\Com4004.c(167): warning:  #177-D: variable "thm" was declared but never referenced
+        cJSON *root,*fmt,*img,*thm,*fld;char *out;int i;        /* declare a few. */
+..\User\src\Com4004.c: 3 warnings, 0 errors
+compiling misc.c...
+compiling stm32f10x_adc.c...
+compiling stm32f10x_bkp.c...
+compiling stm32f10x_can.c...
+compiling stm32f10x_cec.c...
+compiling stm32f10x_crc.c...
+compiling stm32f10x_dac.c...
+compiling stm32f10x_dbgmcu.c...
+compiling stm32f10x_dma.c...
+compiling stm32f10x_exti.c...
+compiling stm32f10x_flash.c...
+compiling stm32f10x_fsmc.c...
+compiling stm32f10x_gpio.c...
+compiling stm32f10x_i2c.c...
+compiling stm32f10x_iwdg.c...
+compiling stm32f10x_pwr.c...
+compiling stm32f10x_rcc.c...
+compiling stm32f10x_rtc.c...
+compiling stm32f10x_sdio.c...
+compiling stm32f10x_spi.c...
+compiling stm32f10x_tim.c...
+compiling stm32f10x_usart.c...
+compiling stm32f10x_wwdg.c...
+compiling core_cm3.c...
+compiling system_stm32f10x.c...
+assembling startup_stm32f10x_hd.s...
+linking...
+Program Size: Code=6892 RO-data=336 RW-data=52 ZI-data=2052  
+"..\OBJ\ssp32.axf" - 0 Error(s), 7 Warning(s).
+</pre>
+</body>
+</html>
+nings, 9 errors
+"..\OBJ\ssp32.axf" - 9 Error(s), 5 Warning(s).
+Target not created
+
+  u8 mem_free(u32 offset);               //内存释放
+..\User\inc\malloc.h(30): error:  #20: identifier "u32" is undefined
+  u8 mem_free(u32 offset);               //内存释放
+..\User\inc\malloc.h(31): error:  #20: identifier "u8" is undefined
+  u8 mem_perused(void);                          //获得内存使用率 
+..\User\inc\malloc.h(35): error:  #20: identifier "u32" is undefined
+  void *mymalloc(u32 size);                     //内存分配
+..\User\inc\malloc.h(36): error:  #20: identifier "u32" is undefined
+  void *myrealloc(void *ptr,u32 size);//重新分配内存
+..\User\src\cJSON.c(57): warning:  #1293-D: assignment in condition
+        if (!(copy = (char*)cJSON_malloc(len))) return 0;
+..\User\src\cJSON.c(222): warning:  #1293-D: assignment in condition
+        ptr=str;while ((token=*ptr) && ++len) {if (strchr("\"\\\b\f\n\r\t",token)) len++; else if (token<32) len+=5;ptr++;}
+..\User\src\cJSON.c(339): warning:  #1293-D: assignment in condition
+                if (!(new_item=cJSON_New_Item())) return 0;     /* memory fail */
+..\User\src\cJSON.c(429): warning:  #1293-D: assignment in condition
+                if (!(new_item=cJSON_New_Item()))       return 0; /* memory fail */
+..\User\src\cJSON.c: 4 warnings, 25 errors
+compiling malloc.c...
+..\User\inc\type.h(10): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit0:1;
+..\User\inc\type.h(11): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit1:1;
+..\User\inc\type.h(12): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit2:1;
+..\User\inc\type.h(13): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit3:1;
+..\User\inc\type.h(14): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit4:1;
+..\User\inc\type.h(15): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit5:1;
+..\User\inc\type.h(16): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit6:1;
+..\User\inc\type.h(17): error:  #20: identifier "uint8_t" is undefined
+          uint8_t bit7:1;
+..\User\inc\type.h(19): error:  #20: identifier "uint8_t" is undefined
+      uint8_t _flag_byte;
+..\User\inc\malloc.h(17): error:  #79: expected a type specifier
+        u8   (*perused)(void);                          //内存使用率
+..\User\inc\malloc.h(17): error:  #90: function returning function is not allowed
+        u8   (*perused)(void);                          //内存使用率
+..\User\inc\malloc.h(17): error:  #168: a function type is not allowed here
+        u8   (*perused)(void);                          //内存使用率
+..\User\inc\malloc.h(18): error:  #20: identifier "u8" is undefined
+        u8        *membase;                                     //内存池
+..\User\inc\malloc.h(19): error:  #20: identifier "u16" is undefined
+        u16   *memmap;                                  //内存管理状态表
+..\User\inc\malloc.h(20): error:  #20: identifier "u8" is undefined
+        u8     memrdy;                                          //内存管理是否就绪
+..\User\inc\malloc.h(25): error:  #20: identifier "u8" is undefined
+  void mymemset(void *s,u8 c,u32 count);         //设置内存
+..\User\inc\malloc.h(25): error:  #20: identifier "u32" is undefined
+  void mymemset(void *s,u8 c,u32 count);         //设置内存
+..\User\inc\malloc.h(26): error:  #20: identifier "u32" is undefined
+  void mymemcpy(void *des,void *src,u32 n);//复制内存 
+..\User\inc\malloc.h(29): error:  #20: identifier "u32" is undefined
+  u32 mem_malloc(u32 size);              //内存分配
+..\User\inc\malloc.h(29): error:  #20: identifier "u32" is undefined
+  u32 mem_malloc(u32 size);              //内存分配
+..\User\inc\malloc.h(30): error:  #20: identifier "u8" is undefined
+  u8 mem_free(u32 offset);               //内存释放
+..\User\inc\malloc.h(30): error:  #20: identifier "u32" is undefined
+  u8 mem_free(u32 offset);               //内存释放
+..\User\inc\malloc.h(31): error:  #20: identifier "u8" is undefined
+  u8 mem_perused(void);                          //获得内存使用率 
+..\User\inc\malloc.h(35): error:  #20: identifier "u32" is undefined
+  void *mymalloc(u32 size);                     //内存分配
+..\User\inc\malloc.h(36): error:  #20: identifier "u32" is undefined
+  void *myrealloc(void *ptr,u32 size);//重新分配内存
+..\User\src\malloc.c(4): error:  #20: identifier "u8" is undefined
+  __align(4) u8 membase[MEM_MAX_SIZE];                                                                                                  //内部SRAM内存池
+..\User\src\malloc.c(6): error:  #20: identifier "u16" is undefined
+  u16 memmapbase[MEM_ALLOC_TABLE_SIZE];                                                                                                 //内部SRAM内存池MAP
+..\User\src\malloc.c(8): error:  #20: identifier "u32" is undefined
+  const u32 memtblsize = MEM_ALLOC_TABLE_SIZE;          //内存表大小
+KB: Unexpected type: 0
+error type>(9): error:  #20: identifier "u32" is undefined
+  const u32 memblksize = MEM_BLOCK_SIZE;                                        //内存分块大小
+KB: Unexpected type: 0
+error type>(10): error:  #20: identifier "u32" is undefined
+  const u32 memsize    = MEM_MAX_SIZE;                                                  //内存总大小
+..\User\src\malloc.c: 0 warnings, 30 errors
+"..\OBJ\ssp32.axf" - 55 Error(s), 4 Warning(s).
+Target not created
+TM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_pwr.c: 0 warnings, 1 error
+compiling stm32f10x_rcc.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_rcc.c: 0 warnings, 1 error
+compiling stm32f10x_rtc.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_rtc.c: 0 warnings, 1 error
+compiling stm32f10x_sdio.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_sdio.c: 0 warnings, 1 error
+compiling stm32f10x_spi.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_spi.c: 0 warnings, 1 error
+compiling stm32f10x_tim.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_tim.c: 0 warnings, 1 error
+compiling stm32f10x_usart.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_usart.c: 0 warnings, 1 error
+compiling stm32f10x_wwdg.c...
+C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\src\stm32f10x_wwdg.c: 0 warnings, 1 error
+compiling core_cm3.c...
+compiling system_stm32f10x.c...
+..\Lib\cmsis\stm32f10x.h(96): error:  #35: #error directive: "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+   #error "Please select first the target STM32F10x device used in your application (in stm32f10x.h file)"
+..\Lib\cmsis\system_stm32f10x.c: 0 warnings, 1 error
+assembling startup_stm32f10x_hd.s...
+"..\ssp32.axf" - 31 Error(s), 0 Warning(s).
+Target not created
