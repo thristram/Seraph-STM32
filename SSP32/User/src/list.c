@@ -17,7 +17,7 @@ slnode_t *uartRxSLHead = NULL;
 /* uart接收单项队列SingleList的表尾 */
 slnode_t *uartRxSLLast = NULL;
 
-
+u8 mutex = 0;
 /*
 	tx_event_flags_create(&uartTxSLEventGroup, "uart tx event group");	
 	tx_event_flags_set(&uartTxSLEventGroup, uartTxSLEventFlag, TX_OR);
@@ -50,6 +50,7 @@ int addNodeToUartTxSLLast(char *psave, int length)
 	newNode = (slnode_t *)mymalloc(sizeof(slnode_t)); if(!newNode){ return -1;}
 	/* 0A 0A */
 	pdata = (char *)mymalloc(length+4); if(!pdata){myfree(newNode); return -1;}
+	mutex = 1;
 	if(newNode && pdata){
 		newNode->next = NULL;
 		newNode->len = (u16)length + 2;	/* 帧尾 0A 0A */
@@ -60,13 +61,15 @@ int addNodeToUartTxSLLast(char *psave, int length)
 		*(pdata+length) = 0x0a;
 		*(pdata+length+1)= 0x0a;
 		newNode->data = pdata;
-
+		mutex = 0;
 		if(!uartTxSLLast){	/* 链表尾是否为空? */
 			uartTxSLHead = newNode;
 			uartTxSLLast = newNode;
+			mutex = 0;
 		}else{
 			uartTxSLLast->next = newNode;	/* add node */
-			uartTxSLLast = newNode;	/* new list end */		
+			uartTxSLLast = newNode;	/* new list end */
+			mutex = 0;			
 		}
 		ret = 0;
 	}	
@@ -86,23 +89,26 @@ int addNodeToUartRxSLLast(char *psave, int length)
 	int ret = -1;
 	slnode_t * newNode;
 	char *pdata;
-
 	newNode = (slnode_t *)mymalloc(sizeof(slnode_t)); if(!newNode){ return -1;}
 	pdata = (char *)mymalloc(length+1); if(!pdata){myfree(newNode); return -1;}
+	mutex = 1;
 	if(newNode && pdata){
 		newNode->next = NULL;
 		newNode->len = (u16)length;
 		newNode->hasWrite = 0;
 		mymemcpy(pdata, psave, length);
 		newNode->data = pdata;
-
+		
 		if(!uartRxSLLast){	/* 链表尾是否为空? */
 			uartRxSLHead = newNode;
 			uartRxSLLast = newNode;
+			mutex = 0;
 		}else{
 			uartRxSLLast->next = newNode;	/* add node */
-			uartRxSLLast = newNode;	/* new list end */		
+			uartRxSLLast = newNode;	/* new list end */
+			mutex = 0;
 		}
+		
 		ret = 0;
 	}	
 

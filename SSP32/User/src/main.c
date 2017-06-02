@@ -9,6 +9,7 @@ void Task2s(void);
 
 void system_init(void)
 {
+	/*
 	u8 i;
 	for(i = 0; i < 20; i++) ss.st[i].meshid = 0x8001+i;
 	Usart2_Send_Done = 0;
@@ -21,8 +22,8 @@ void system_init(void)
 		ss.sc[i].deviceid[5] = '4';
 		ss.sc[i].deviceid[6] = '5';
 		ss.sc[i].deviceid[7] = '6';
-
 	}
+	*/
 }
 
  int main(void)
@@ -31,15 +32,14 @@ void system_init(void)
 	TIM2_Init();
 	delay_init();	    	 //延时函数初始化	
 	NVIC_Configuration();// 设置中断优先级分组
-	uart1_init(115200);	 //串口初始化为9600
-	uart2_init(57600);
+	uart1_init(115200);	 //串口初始化为115200，与4004通讯
+	uart2_init(57600);    //串口波特率为57600，与1010通讯
 	LED_Init();		  	 //初始化与LED连接的硬件接口 
 	system_init();
 	//printf("Hello!\r\n");
 	Usart2_Send(hello,6);
-	 while(!Usart2_Send_Done);Usart2_Send_Done = 0;
+	while(!Usart2_Send_Done);Usart2_Send_Done = 0;
 	//test_cjson();
-
 	while(1)
 	{
 		Task2ms();
@@ -54,15 +54,13 @@ void Task2ms(void)
 	if(f_2ms)
 	{
 		f_2ms = 0;
-		analyze();
-		rev_anaylze();
-		if(rev_success2)
+		analyze();//接收到4004消息处理
+		rev_anaylze();//接收到1010消息处理
+		/*if(rev_success2)
 		{
 			rev_success2 = 0;
-			//init_send_Txmessage(CONFIG_SS);
-			//send_config_ss();
 			sicp_action_cmd();
-		}
+		}*/
 	}
 }
 
@@ -100,12 +98,12 @@ void Task1s(void)
 	if(f_1s)
 	{
 		f_1s = 0;
+		//success_receipt();
 		LED1_Toggle;
 		LED2_Toggle;
 		LED3_Toggle;
 		LED4_Toggle;
 		sicp_send_heartbeart();
-		//sicp_receipt(0x01,0x33,0x8000);
 		if(sicp_refr > 0){
 			sicp_refr--;
 			if(sicp_refr == 0){

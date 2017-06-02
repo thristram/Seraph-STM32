@@ -18,7 +18,7 @@ typedef struct slnode_t{
 
 } slnode_t;
 
-
+extern u8 mutex;
 
 /* uart发送单项队列SingleList的表头 */
 extern slnode_t *uartTxSLHead;

@@ -130,6 +130,7 @@ COM1010_EXT void deal_sc_data_cmd(void);
 
 COM1010_EXT void sicp_cmd_refresh(void);
 COM1010_EXT void sicp_alert_cmd(void);
+COM1010_EXT void sicp_led_cmd(void);
 
 
 

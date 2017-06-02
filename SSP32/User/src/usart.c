@@ -135,6 +135,7 @@ void Usart1_Send(u8 *buf,u16 len)
 	mymemcpy(USART1_Send_Buf,buf,len);
 	Usart1_Send_Length = len;
 	Usart1_Send_Cnt = 0;
+	uartTxSLHead->hasWrite = 0;
 	USART_ITConfig(USART1,USART_IT_TXE,ENABLE);    //这里立即开启发送中断
 }
 
@@ -179,6 +180,7 @@ void USART1_IRQHandler(void)                	//串口1中断服务程序
 		{
 			Usart1_Send_Cnt = 0;
 			Usart1_Send_Done = 1;
+			if(!mutex)	deleteNodeFromUartTxSLHead();//互斥量，uartRxSLHead和uartRxSLLast在addNodeToUartRxSLLast函数中未处理完就被清
 			USART_ITConfig(USART1, USART_IT_TXE, DISABLE);	//关闭发送中断
 		}
 	}

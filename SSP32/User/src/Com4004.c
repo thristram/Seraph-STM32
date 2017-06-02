@@ -58,6 +58,10 @@ void analyze(void)
 		{
 			rev_analyze(Rxfr4004.rx_var_header.topic,Rxfr4004.rx_payload);
 		}
+		//接收到的数据可能是ssp心跳包/数据包/4004心跳包
+		if(uartTxSLHead){//链表头不为空
+			Usart1_Send(uartTxSLHead->data,uartTxSLHead->len); //uartTxSLHead->haswrite在中断中处理
+		}
 	}
 }
 
@@ -935,7 +939,7 @@ void deal_config_mesh(u8 *buf)
 void deal_config_st(u8 *buf)
 {
 	cJSON *root,*tmp,*level1,*level2;
-	int i,j,k,cmd_size;
+	int i,j,cmd_size;
 	int index = 0;
 	root = cJSON_Parse((char*)buf);
 	ss_cst_count = 0;
@@ -1235,6 +1239,7 @@ void deal_config_strategy_htsp(u8 *buf)//buf是topic内容
 		init_tx_message(0x43,0x01,0x15,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
 		send_message(&Txto4004);
 	}
+	
 }
 
 
@@ -1434,6 +1439,7 @@ void dela_alarm(u8 *buf)//buf时topic内容
 
 void success_receipt(void)
 {
+	/*
 	u8 *send_buf,*temp_send_buf;
 	u16 send_payload_len;
 	char *send_payload_buf;
@@ -1445,22 +1451,35 @@ void success_receipt(void)
 	cJSON_Delete(root); 
 	send_payload_len = strlen(send_payload_buf);
 	mymemcpy(Txto4004.tx_payload,send_payload_buf,send_payload_len);
-	temp_send_buf = send_buf = mymalloc(send_payload_len+5);
+	send_buf = temp_send_buf = mymalloc(send_payload_len+5);
 	*send_buf++ = Txto4004.tx_fix_header.ch.first_ch_byte = 0x83;
 	*send_buf++ = (3 + send_payload_len);
 	*send_buf++	= Txto4004.tx_var_header.version = 0x01;
 	*send_buf++	= Txto4004.tx_var_header.message_id_H = Rxfr4004.rx_var_header.message_id_H;
 	*send_buf++	= Txto4004.tx_var_header.message_id_L = Rxfr4004.rx_var_header.message_id_L;
 	mystrncat(send_buf,Txto4004.tx_payload,send_payload_len);
-	Usart1_Send(temp_send_buf,(5 + send_payload_len));
-	while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
+	//Usart1_Send(temp_send_buf,(5 + send_payload_len));
+	//while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
+	addNodeToUartTxSLLast(temp_send_buf,(5 + send_payload_len));
 	mymemset(Txto4004.tx_payload,0,send_payload_len);
-	free(send_payload_buf);
-	myfree(send_buf);
+	//free(send_payload_buf);
+	//myfree(send_buf);
+	*/
+	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
+	char *payload;
+	char *topic = "";
+	cs = cJSON_CreateObject();
+	cJSON_AddItemToObject(cs, "code", cJSON_CreateString("0x0200000"));     
+	cJSON_AddItemToObject(cs, "msg", cJSON_CreateString("operation are Successfully Performed")); 
+	payload = cJSON_PrintUnformatted(cs);
+	if(payload)	cJSON_Delete(cs);
+	init_tx_message(0x83,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
+	send_message(&Txto4004);
 }
 
 void error_recepit(void)
 {
+	/*
 	u8 *send_buf,*temp_send_buf;
 	u16 send_payload_len;
 	char *send_payload_buf;
@@ -1479,11 +1498,23 @@ void error_recepit(void)
 	*send_buf++	= Txto4004.tx_var_header.message_id_H = Rxfr4004.rx_var_header.message_id_H;
 	*send_buf++	= Txto4004.tx_var_header.message_id_L = Rxfr4004.rx_var_header.message_id_L;
 	mystrncat(send_buf,Txto4004.tx_payload,send_payload_len);
-	Usart1_Send(temp_send_buf,(5 + send_payload_len));
-	while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
+	//Usart1_Send(temp_send_buf,(5 + send_payload_len));
+	//while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
+	addNodeToUartTxSLLast(temp_send_buf,(5 + send_payload_len));
 	mymemset(Txto4004.tx_payload,0,send_payload_len);
-	free(send_payload_buf);
-	myfree(send_buf);
+	//free(send_payload_buf);
+	//myfree(send_buf);
+	*/
+	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
+	char *payload;
+	char *topic = "";
+	cs = cJSON_CreateObject();
+	cJSON_AddItemToObject(cs, "code", cJSON_CreateString("0x0200000"));     
+	cJSON_AddItemToObject(cs, "msg", cJSON_CreateString("operation are Successfully Performed")); 
+	payload = cJSON_PrintUnformatted(cs);
+	if(payload)	cJSON_Delete(cs);
+	init_tx_message(0x85,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
+	send_message(&Txto4004);
 }
 
 void calc_send_r_length(u8 *buf,Txmessage *tx)
@@ -1569,13 +1600,13 @@ void init_tx_message(u8 first_ch_byte,u8 version,u8 topic_len,char *topic,u8 mes
 	Txto4004.tx_var_header.topic_lengthH = 0x00;
 	Txto4004.tx_var_header.topic_lengthL = topic_len;
 	if(topic_len)
-		mymemcpy(Txto4004.tx_var_header.topic,topic,topic_len);
+		{mymemcpy(Txto4004.tx_var_header.topic,topic,topic_len);myfree(topic);}
 	Txto4004.tx_var_header.message_id_H = message_id_H;
 	Txto4004.tx_var_header.message_id_L = message_id_L;
 	if(ext_message_id)
 		Txto4004.tx_var_header.ext_message_id = ext_message_id;
 	calc_send_r_length(payload,&Txto4004);
-	mymemcpy(Txto4004.tx_payload,payload,strlen(payload));
+	mymemcpy(Txto4004.tx_payload,payload,strlen(payload));myfree(payload);
 }
 
 //初始化Txto4004数据，根据_REPLY_ type做不同初始化
@@ -1672,7 +1703,8 @@ void rev_heart_beat(u8 fix1)
 	u8 send_buf[2];
 	send_buf[0] = fix1;
 	send_buf[1] = 0x00;
-	Usart1_Send(send_buf,2);
+	//Usart1_Send(send_buf,2);
+	addNodeToUartTxSLLast(send_buf,2);
 }
 
 /**************************************ss主动发送给esh函数**********************************************/
@@ -1724,7 +1756,7 @@ void send_data_sync(u8 type)
 {
 	u8 i;
 	u8 temp_counter,gene_message_id_H,gene_message_id_L;
-	cJSON *cs,*sub_cs,*sub_cs2;
+	cJSON *cs,*sub_cs;
 	char *payload;
 	char *topic;
 	if(type == 0x83) topic = "";
@@ -1769,7 +1801,7 @@ void send_data_sync(u8 type)
 void send_deepin_data_sync(void)
 {
 	u8 i;
-	cJSON *cs,*sub_cs,*sub_cs2;
+	cJSON *cs,*sub_cs;
 	char *payload;
 	char *topic = "";
 	cs = cJSON_CreateObject();
@@ -1961,6 +1993,7 @@ void send_device_info_sub(void)
 			}
 		}
 	}
+	myfree(topic);
 }
 
 //SS向eSH报告ST/SC/SLC/SPC故障，此函数放到Task100ms中
@@ -2217,6 +2250,7 @@ void rev_action_perform(void)
 		init_tx_message(0x83,0x01,0x00,topic,ss_ap_message_id_H,ss_ap_message_id_L,0x00,payload);
 		send_message(&Txto4004);
 	}
+	myfree(topic);
 }
 
 
@@ -2328,6 +2362,7 @@ void rev_qe(void)
 		init_tx_message(0x83,0x01,0x00,topic,ss_qe_message_id_H,ss_qe_message_id_L,0x00,payload);
 		send_message(&Txto4004);
 	}
+	myfree(topic);
 }
 
 //回复device/status指令，此函数放在Task100ms中
@@ -2337,9 +2372,9 @@ void rev_device_status(void)
 	cJSON *cs,*sub_cs;
 	char *payload;
 	char *topic = "";
-	cs = cJSON_CreateObject();
 	if(ack_des){
 		ack_des = 0;
+		cs = cJSON_CreateObject();
 		for(i = 0;i < 5;i++){
 			for(j = 0;j < 15;j++){
 				if((!ss.sc[i].slc[j].deviceid[0]) && (ss.sc[i].slc[j].meshid)){//device id和mesh id不为空才发送状态
@@ -2363,4 +2398,6 @@ void rev_device_status(void)
 		init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
 		send_message(&Txto4004);
 	}
+	myfree(topic);
 }
+
