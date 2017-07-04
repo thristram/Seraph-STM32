@@ -199,7 +199,7 @@ typedef struct
 
 typedef struct
 {
-	u16 total_energy_consum;
+	u32 total_energy_consum;
 	u16 total_current;
 	u8  voltage;
 }SC_sense;

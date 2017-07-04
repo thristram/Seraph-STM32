@@ -6,8 +6,8 @@ void TIM2_Init(void)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2,ENABLE);
-	TIM_TimeBaseStructure.TIM_Period = (100 - 1);//计时2ms
-	TIM_TimeBaseStructure.TIM_Prescaler =720;
+	TIM_TimeBaseStructure.TIM_Period = 200;//计时2ms
+	TIM_TimeBaseStructure.TIM_Prescaler =720-1;
 	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
 	TIM_TimeBaseStructure.TIM_CounterMode=TIM_CounterMode_Up;
 	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);

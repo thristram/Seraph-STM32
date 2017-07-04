@@ -27,3 +27,11 @@
 ..\obj\main.o: D:\Program Files\ARM\ADSv1_2\INCLUDE\stddef.h
 ..\obj\main.o: ..\User\inc\malloc.h
 ..\obj\main.o: D:\Program Files\ARM\ADSv1_2\INCLUDE\string.h
+..\obj\main.o: ..\User\inc\sensors.h
+..\obj\main.o: ..\User\inc\sensors_adc.h
+..\obj\main.o: ..\User\inc\sensors_timer.h
+..\obj\main.o: ..\User\inc\sensors_gpio.h
+..\obj\main.o: ..\User\inc\sensors_uart.h
+..\obj\main.o: ..\User\inc\sensors_typedefs.h
+..\obj\main.o: ..\User\inc\sensors_sht3x.h
+..\obj\main.o: ..\User\inc\sensors_i2c_hal.h

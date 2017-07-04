@@ -470,6 +470,41 @@
               <FileType>1</FileType>
               <FilePath>..\User\src\list.c</FilePath>
             </File>
+            <File>
+              <FileName>sensors.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors_adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_gpio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors_gpio.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_i2c_hal.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors_i2c_hal.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_sht3x.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors_sht3x.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_timer.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors_timer.c</FilePath>
+            </File>
+            <File>
+              <FileName>sensors_uart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\User\src\sensors_uart.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

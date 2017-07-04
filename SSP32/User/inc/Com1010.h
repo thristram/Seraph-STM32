@@ -38,6 +38,9 @@ st1~st20分别为120~139
 sc1~sc5分别为140~144
 malfuncrtion command:
 
+Gateway	Mesh	ID	Broadcasting:
+0x9E 158
+
 *********************************************************/
 
 
@@ -64,6 +67,16 @@ typedef struct
 	u8 action_ext;
 	u8 action_ing;//等待第1条指令发送标志
 }ACTION;
+
+typedef struct
+{
+	u8 signal;
+	u8 connect;
+	u8 phones;
+	u8 host_meshid_H;
+	u8 host_meshid_L;
+}NET_Status;
+
 
 /***************位变量定义****************************/
 
@@ -97,6 +110,7 @@ COM1010_EXT u8  sicp_buf[Usart2_Rec_Len];
 
 COM1010_EXT u8  heartbeat_cnt;
 COM1010_EXT u8  sicp_refr;
+COM1010_EXT u8  broadcast_cnt;;
 
 COM1010_EXT u8 action_type;
 COM1010_EXT u8 action_timecnt;
@@ -106,7 +120,7 @@ COM1010_EXT u8 rev_action_success_cnt;
 COM1010_EXT u8 rev_action_fail_cnt;
 
 COM1010_EXT ACTION action_qe;
-
+COM1010_EXT NET_Status ns;
 COM1010_EXT u8 	rev_mesh_id_H;
 COM1010_EXT u8 	rev_mesh_id_L;
 
@@ -114,7 +128,7 @@ COM1010_EXT u8 	rev_mesh_id_L;
 COM1010_EXT u8 Check_Sum(u8 *buf,u8 length);
 COM1010_EXT void rev_anaylze(void);
 COM1010_EXT void clear_sicp_buf(void);
-COM1010_EXT void sicp_send_message(SICP_Message *tx);
+COM1010_EXT void sicp_send_message(SICP_Message *tx,u8 pay_len);
 COM1010_EXT void rev_deal(void);
 COM1010_EXT void sicp_send_heartbeart(void);
 COM1010_EXT void sicp_receipt(u8 type,u8 send_message_id,u16 send_mesh_id);
@@ -129,9 +143,11 @@ COM1010_EXT void deal_mal_cmd(void);
 COM1010_EXT void deal_sc_data_cmd(void);
 
 COM1010_EXT void sicp_cmd_refresh(void);
+COM1010_EXT void sicp_cmd_data(void);
 COM1010_EXT void sicp_alert_cmd(void);
 COM1010_EXT void sicp_led_cmd(void);
-
+COM1010_EXT void sicp_qe_action_cmd(void);
+COM1010_EXT void sicp_broadcast(void);
 
 
 #endif

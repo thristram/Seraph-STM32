@@ -1373,8 +1373,12 @@ void deal_qe(u8 *buf)//bufÊÇtopicÄÚÈİ
 			ss_qe.action[1] = *(buf+i);i++;
 			//topos
 			i += 7;
-			if(*(buf+i) == '9')	ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			else								ss_qe.topos = (int)(*(buf + i) - '0');
+			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
+			else																							ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
+			/*if((*(buf+i) > 0x30)&&(*(buf+i) <= 0x39))	{ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');}
+			else								{
+				ss_qe.topos = (int)(*(buf + i) - '0');
+			}*/
 		}
 	}
 	else if(*(buf + i) == 'a'){
@@ -1465,7 +1469,7 @@ void success_receipt(void)
 	//free(send_payload_buf);
 	//myfree(send_buf);
 	*/
-	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
+	cJSON *cs;
 	char *payload;
 	char *topic = "";
 	cs = cJSON_CreateObject();
@@ -1505,7 +1509,7 @@ void error_recepit(void)
 	//free(send_payload_buf);
 	//myfree(send_buf);
 	*/
-	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
+	cJSON *cs;
 	char *payload;
 	char *topic = "";
 	cs = cJSON_CreateObject();
@@ -1762,6 +1766,8 @@ void send_data_sync(u8 type)
 	if(type == 0x83) topic = "";
 	else if(type == 0x43) topic = "/data/sync";
 	temp_counter = (u8)TIM2->CNT;
+
+	
 	gene_message_id_H = random(temp_counter);
 	temp_counter = (u8)TIM2->CNT;
 	gene_message_id_L = random(temp_counter);
