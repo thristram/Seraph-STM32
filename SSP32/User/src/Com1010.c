@@ -336,7 +336,7 @@ void rev_anaylze(void)
 				ns.signal = 0x00;
 				ns.connect = 0x00;
 				ns.phones = 0x00;
-				ss.meshid = 0x0000;
+				ss.meshid = 0x80FF;
 				ns.host_meshid_H = 0x00;
 				ns.host_meshid_L = 0x00;
 				break;

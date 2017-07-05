@@ -64,7 +64,7 @@ void GP2Y1023_timer_config(void)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	TIM_ICInitTypeDef  TIM_ICInitStructure;
 
-  	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
 	TIM_DeInit(TIM3); //初始化TIM3为缺省值 0
 
