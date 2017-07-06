@@ -11,8 +11,8 @@ void system_init(void)
 {
 	//ss.meshid = 0x8005;
 	//ss.sc[0].meshid = 0x8004;
-	ss.sc[0].deviceid[0] = 0x53;
-	ss.sc[0].deviceid[1] = 0x43;
+	ss.sc[0].deviceid[0] = 0x41;
+	ss.sc[0].deviceid[1] = 0x41;
 	ss.sc[0].deviceid[2] = 0x35;
 	ss.sc[0].deviceid[3] = 0x35;
 	ss.sc[0].deviceid[4] = 0x41;
@@ -27,16 +27,16 @@ void system_init(void)
 	ss.st[0].deviceid[5] = 0x42;
 	ss.st[0].deviceid[6] = 0x35;
 	ss.st[0].deviceid[7] = 0x39;
-	ss.sc[0].slc[0].deviceid[0] = 0x53;
-	ss.sc[0].slc[0].deviceid[1] = 0x4C;
+	ss.sc[0].slc[0].deviceid[0] = 0x41;
+	ss.sc[0].slc[0].deviceid[1] = 0x41;
 	ss.sc[0].slc[0].deviceid[2] = 0x35;
 	ss.sc[0].slc[0].deviceid[3] = 0x35;
 	ss.sc[0].slc[0].deviceid[4] = 0x41;
 	ss.sc[0].slc[0].deviceid[5] = 0x42;
 	ss.sc[0].slc[0].deviceid[6] = 0x35;
 	ss.sc[0].slc[0].deviceid[7] = 0x37;
-	ss.sc[0].spc[1].deviceid[0] = 0x53;
-	ss.sc[0].spc[1].deviceid[1] = 0x50;
+	ss.sc[0].spc[1].deviceid[0] = 0x41;
+	ss.sc[0].spc[1].deviceid[1] = 0x41;
 	ss.sc[0].spc[1].deviceid[2] = 0x35;
 	ss.sc[0].spc[1].deviceid[3] = 0x35;
 	ss.sc[0].spc[1].deviceid[4] = 0x41;

@@ -38,7 +38,7 @@ void rev_deal(void)
 			if ((temp != 0xEE) && (temp != 0xDD))	Usart2_Rec_Cnt = 0;
 			break;
 		case 2:
-			if ((temp != 0xEE) && (temp != 0xDD)) Usart2_Rec_Cnt = 0;
+			if ((temp != 0xEE) && (temp != 0xDD) && (temp != 0xAA)) Usart2_Rec_Cnt = 0;
 			break;
 		case 3:
 			//if (!temp)				rev_count = 0;
@@ -54,12 +54,12 @@ void rev_deal(void)
 			{
 				Usart2_Rec_Cnt = 0;
 			}
-			if ((Usart2_Rece_Buf[0] == 0xEE)&&(Usart2_Rece_Buf[1] == 0xEE))
+			if ((Usart2_Rece_Buf[0] == 0xEE)&&((Usart2_Rece_Buf[1] == 0xEE)||(Usart2_Rece_Buf[1] == 0xAA)))
 			{
 				if (Usart2_Rec_Cnt > Usart2_Rece_Buf[5] + 2)//接收数据完成
 				{
 					Usart2_Rec_Cnt = 0;
-					check_sum = Check_Sum(Usart2_Rece_Buf,Usart2_Rece_Buf[5] + 2);
+					check_sum = Check_Sum(Usart2_Rece_Buf+2,Usart2_Rece_Buf[5]);
 					
 					if (check_sum == Usart2_Rece_Buf[Usart2_Rece_Buf[5] + 2])//校验正确
 					{
@@ -359,8 +359,8 @@ void deal_device_info(u8 type)
 		case 0xB1://SC
 			rev_B1 = 1;
 			
-			rev_deviceid[0] = 'S';//hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = 'C';//hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
 			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
 			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
 			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
@@ -399,8 +399,8 @@ void deal_device_info(u8 type)
 			break;
 		case 0xB2://SLC
 			rev_B2 = 1;
-			rev_deviceid[0] = 'S';//hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = 'L';//hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
 			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
 			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
 			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
@@ -440,8 +440,8 @@ void deal_device_info(u8 type)
 			break;
 		case 0xB3://SPC
 			rev_B3 = 1;
-			rev_deviceid[0] = 'S';//hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = 'P';//hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
 			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
 			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
 			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
@@ -480,8 +480,8 @@ void deal_device_info(u8 type)
 			break;
 		case 0xB4://ST
 			rev_B4 = 1;
-			rev_deviceid[0] = 'S';//hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = 'T';//hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
 			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
 			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
 			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));

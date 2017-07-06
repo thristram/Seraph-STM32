@@ -1339,7 +1339,7 @@ void deal_qe(u8 *buf)//buf是topic内容
 	int j = 0;
 	int k = 0;
 	while(*(buf+i) != 0x2F)	i++; 	
-	mymemcpy(ss_qe.sepid,(buf+10),(i-10));
+	mymemcpy(ss_qe.sepid,(buf+12),(i-10-2));
 	i++;
 	if(*(buf + i) == 'M'){///qe/sepid/{$SEPID}/MD/1/CH/52/action/DM/topos/99,//qe/sepid/{$SEPID}/MD/1/CH/52/action/WP/topos/99  
 		i += 3;j=i;
@@ -1363,7 +1363,7 @@ void deal_qe(u8 *buf)//buf是topic内容
 				ss_qe.CH = (int)(*(buf + j) - '0');
 				break;
 			case 2:
-				ss_qe.CH = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
+				ss_qe.CH = /*(int)(*(buf + j) - '0')*10 +*/(int)(*(buf + j+1) - '0');
 				break;
 			}
 			i++;
