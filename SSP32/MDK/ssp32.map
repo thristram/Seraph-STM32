@@ -453,6 +453,7 @@ Section Cross References
     com4004.o(i.rev_qe) refers to cjson.o(i.cJSON_CreateArray) for cJSON_CreateArray
     com4004.o(i.rev_qe) refers to cjson.o(i.cJSON_AddItemToArray) for cJSON_AddItemToArray
     com4004.o(i.rev_qe) refers to cjson.o(i.cJSON_CreateString) for cJSON_CreateString
+    com4004.o(i.rev_qe) refers to malloc.o(i.mymemcpy) for mymemcpy
     com4004.o(i.rev_qe) refers to com1010.o(.data) for UART2Flag1_
     com4004.o(i.rev_qe) refers to com4004.o(.bss) for ss
     com4004.o(i.rev_qe) refers to cjson.o(i.cJSON_PrintUnformatted) for cJSON_PrintUnformatted
@@ -2248,46 +2249,46 @@ Image Symbol Table
     i.rev_device_status                      0x0800b1a4   Section        0  com4004.o(i.rev_device_status)
     i.rev_heart_beat                         0x0800b48c   Section        0  com4004.o(i.rev_heart_beat)
     i.rev_qe                                 0x0800b4a4   Section        0  com4004.o(i.rev_qe)
-    i.send_action_message                    0x0800bf68   Section        0  com1010.o(i.send_action_message)
-    i.send_data_sync                         0x0800bfd4   Section        0  com4004.o(i.send_data_sync)
-    i.send_deepin_data_sync                  0x0800c3a0   Section        0  com4004.o(i.send_deepin_data_sync)
-    i.send_device_info_sub                   0x0800c8f0   Section        0  com4004.o(i.send_device_info_sub)
-    i.send_message                           0x0800d1a8   Section        0  com4004.o(i.send_message)
-    i.send_message_without_payload           0x0800d262   Section        0  com4004.o(i.send_message_without_payload)
-    i.sensors_init_all                       0x0800d2a0   Section        0  sensors.o(i.sensors_init_all)
-    i.sicp_alert_cmd                         0x0800d35c   Section        0  com1010.o(i.sicp_alert_cmd)
-    i.sicp_ble_cmd                           0x0800d43c   Section        0  com1010.o(i.sicp_ble_cmd)
-    i.sicp_broadcast                         0x0800d4bc   Section        0  com1010.o(i.sicp_broadcast)
-    i.sicp_cmd_data                          0x0800d508   Section        0  com1010.o(i.sicp_cmd_data)
-    i.sicp_cmd_refresh                       0x0800d59c   Section        0  com1010.o(i.sicp_cmd_refresh)
-    i.sicp_config_cmd                        0x0800d68c   Section        0  com1010.o(i.sicp_config_cmd)
-    i.sicp_led_cmd                           0x0800d994   Section        0  com1010.o(i.sicp_led_cmd)
-    i.sicp_qe_action_cmd                     0x0800ddf0   Section        0  com1010.o(i.sicp_qe_action_cmd)
-    i.sicp_receipt                           0x0800e024   Section        0  com1010.o(i.sicp_receipt)
-    i.sicp_send_heartbeart                   0x0800e060   Section        0  com1010.o(i.sicp_send_heartbeart)
-    i.sicp_send_message                      0x0800e28c   Section        0  com1010.o(i.sicp_send_message)
-    i.skip                                   0x0800e2ec   Section        0  cjson.o(i.skip)
-    skip                                     0x0800e2ed   Thumb Code    18  cjson.o(i.skip)
-    i.smokeModule_check                      0x0800e300   Section        0  sensors_gpio.o(i.smokeModule_check)
-    i.sqrt                                   0x0800e324   Section        0  sqrt.o(i.sqrt)
-    i.ssp_parse                              0x0800e370   Section        0  com4004.o(i.ssp_parse)
-    i.success_receipt                        0x0800e4a4   Section        0  com4004.o(i.success_receipt)
-    i.suffix_object                          0x0800e558   Section        0  cjson.o(i.suffix_object)
-    suffix_object                            0x0800e559   Thumb Code     6  cjson.o(i.suffix_object)
-    i.system_init                            0x0800e560   Section        0  main.o(i.system_init)
-    i.test_gpio_config                       0x0800e620   Section        0  main.o(i.test_gpio_config)
-    i.test_gpio_pwm                          0x0800e654   Section        0  main.o(i.test_gpio_pwm)
-    i.uart1_init                             0x0800e684   Section        0  usart.o(i.uart1_init)
-    i.uart2_init                             0x0800e79c   Section        0  usart.o(i.uart2_init)
-    .constdata                               0x0800e848   Section        7  cjson.o(.constdata)
-    firstByteMark                            0x0800e848   Data           7  cjson.o(.constdata)
-    .constdata                               0x0800e850   Section      136  pow.o(.constdata)
-    bp                                       0x0800e850   Data          16  pow.o(.constdata)
-    dp_h                                     0x0800e860   Data          16  pow.o(.constdata)
-    dp_l                                     0x0800e870   Data          16  pow.o(.constdata)
-    L                                        0x0800e880   Data          48  pow.o(.constdata)
-    P                                        0x0800e8b0   Data          40  pow.o(.constdata)
-    .constdata                               0x0800e8d8   Section        8  qnan.o(.constdata)
+    i.send_action_message                    0x0800c000   Section        0  com1010.o(i.send_action_message)
+    i.send_data_sync                         0x0800c06c   Section        0  com4004.o(i.send_data_sync)
+    i.send_deepin_data_sync                  0x0800c438   Section        0  com4004.o(i.send_deepin_data_sync)
+    i.send_device_info_sub                   0x0800c988   Section        0  com4004.o(i.send_device_info_sub)
+    i.send_message                           0x0800d240   Section        0  com4004.o(i.send_message)
+    i.send_message_without_payload           0x0800d304   Section        0  com4004.o(i.send_message_without_payload)
+    i.sensors_init_all                       0x0800d340   Section        0  sensors.o(i.sensors_init_all)
+    i.sicp_alert_cmd                         0x0800d3fc   Section        0  com1010.o(i.sicp_alert_cmd)
+    i.sicp_ble_cmd                           0x0800d4dc   Section        0  com1010.o(i.sicp_ble_cmd)
+    i.sicp_broadcast                         0x0800d55c   Section        0  com1010.o(i.sicp_broadcast)
+    i.sicp_cmd_data                          0x0800d5a8   Section        0  com1010.o(i.sicp_cmd_data)
+    i.sicp_cmd_refresh                       0x0800d63c   Section        0  com1010.o(i.sicp_cmd_refresh)
+    i.sicp_config_cmd                        0x0800d72c   Section        0  com1010.o(i.sicp_config_cmd)
+    i.sicp_led_cmd                           0x0800da34   Section        0  com1010.o(i.sicp_led_cmd)
+    i.sicp_qe_action_cmd                     0x0800de90   Section        0  com1010.o(i.sicp_qe_action_cmd)
+    i.sicp_receipt                           0x0800e0c4   Section        0  com1010.o(i.sicp_receipt)
+    i.sicp_send_heartbeart                   0x0800e100   Section        0  com1010.o(i.sicp_send_heartbeart)
+    i.sicp_send_message                      0x0800e32c   Section        0  com1010.o(i.sicp_send_message)
+    i.skip                                   0x0800e38c   Section        0  cjson.o(i.skip)
+    skip                                     0x0800e38d   Thumb Code    18  cjson.o(i.skip)
+    i.smokeModule_check                      0x0800e3a0   Section        0  sensors_gpio.o(i.smokeModule_check)
+    i.sqrt                                   0x0800e3c4   Section        0  sqrt.o(i.sqrt)
+    i.ssp_parse                              0x0800e410   Section        0  com4004.o(i.ssp_parse)
+    i.success_receipt                        0x0800e544   Section        0  com4004.o(i.success_receipt)
+    i.suffix_object                          0x0800e5f8   Section        0  cjson.o(i.suffix_object)
+    suffix_object                            0x0800e5f9   Thumb Code     6  cjson.o(i.suffix_object)
+    i.system_init                            0x0800e600   Section        0  main.o(i.system_init)
+    i.test_gpio_config                       0x0800e6c0   Section        0  main.o(i.test_gpio_config)
+    i.test_gpio_pwm                          0x0800e6f4   Section        0  main.o(i.test_gpio_pwm)
+    i.uart1_init                             0x0800e724   Section        0  usart.o(i.uart1_init)
+    i.uart2_init                             0x0800e83c   Section        0  usart.o(i.uart2_init)
+    .constdata                               0x0800e8e8   Section        7  cjson.o(.constdata)
+    firstByteMark                            0x0800e8e8   Data           7  cjson.o(.constdata)
+    .constdata                               0x0800e8f0   Section      136  pow.o(.constdata)
+    bp                                       0x0800e8f0   Data          16  pow.o(.constdata)
+    dp_h                                     0x0800e900   Data          16  pow.o(.constdata)
+    dp_l                                     0x0800e910   Data          16  pow.o(.constdata)
+    L                                        0x0800e920   Data          48  pow.o(.constdata)
+    P                                        0x0800e950   Data          40  pow.o(.constdata)
+    .constdata                               0x0800e978   Section        8  qnan.o(.constdata)
     .data                                    0x20000000   Section        4  delay.o(.data)
     fac_us                                   0x20000000   Data           1  delay.o(.data)
     fac_ms                                   0x20000002   Data           2  delay.o(.data)
@@ -2718,37 +2719,37 @@ Image Symbol Table
     rev_deal                                 0x0800b065   Thumb Code   300  com1010.o(i.rev_deal)
     rev_device_status                        0x0800b1a5   Thumb Code   702  com4004.o(i.rev_device_status)
     rev_heart_beat                           0x0800b48d   Thumb Code    24  com4004.o(i.rev_heart_beat)
-    rev_qe                                   0x0800b4a5   Thumb Code  2736  com4004.o(i.rev_qe)
-    send_action_message                      0x0800bf69   Thumb Code   108  com1010.o(i.send_action_message)
-    send_data_sync                           0x0800bfd5   Thumb Code   874  com4004.o(i.send_data_sync)
-    send_deepin_data_sync                    0x0800c3a1   Thumb Code  1336  com4004.o(i.send_deepin_data_sync)
-    send_device_info_sub                     0x0800c8f1   Thumb Code  2226  com4004.o(i.send_device_info_sub)
-    send_message                             0x0800d1a9   Thumb Code   186  com4004.o(i.send_message)
-    send_message_without_payload             0x0800d263   Thumb Code    60  com4004.o(i.send_message_without_payload)
-    sensors_init_all                         0x0800d2a1   Thumb Code    70  sensors.o(i.sensors_init_all)
-    sicp_alert_cmd                           0x0800d35d   Thumb Code   208  com1010.o(i.sicp_alert_cmd)
-    sicp_ble_cmd                             0x0800d43d   Thumb Code   122  com1010.o(i.sicp_ble_cmd)
-    sicp_broadcast                           0x0800d4bd   Thumb Code    70  com1010.o(i.sicp_broadcast)
-    sicp_cmd_data                            0x0800d509   Thumb Code   140  com1010.o(i.sicp_cmd_data)
-    sicp_cmd_refresh                         0x0800d59d   Thumb Code   230  com1010.o(i.sicp_cmd_refresh)
-    sicp_config_cmd                          0x0800d68d   Thumb Code   760  com1010.o(i.sicp_config_cmd)
-    sicp_led_cmd                             0x0800d995   Thumb Code  1110  com1010.o(i.sicp_led_cmd)
-    sicp_qe_action_cmd                       0x0800ddf1   Thumb Code   544  com1010.o(i.sicp_qe_action_cmd)
-    sicp_receipt                             0x0800e025   Thumb Code    60  com1010.o(i.sicp_receipt)
-    sicp_send_heartbeart                     0x0800e061   Thumb Code   542  com1010.o(i.sicp_send_heartbeart)
-    sicp_send_message                        0x0800e28d   Thumb Code    88  com1010.o(i.sicp_send_message)
-    smokeModule_check                        0x0800e301   Thumb Code    26  sensors_gpio.o(i.smokeModule_check)
-    sqrt                                     0x0800e325   Thumb Code    76  sqrt.o(i.sqrt)
-    ssp_parse                                0x0800e371   Thumb Code   296  com4004.o(i.ssp_parse)
-    success_receipt                          0x0800e4a5   Thumb Code   104  com4004.o(i.success_receipt)
-    system_init                              0x0800e561   Thumb Code   178  main.o(i.system_init)
-    test_gpio_config                         0x0800e621   Thumb Code    46  main.o(i.test_gpio_config)
-    test_gpio_pwm                            0x0800e655   Thumb Code    40  main.o(i.test_gpio_pwm)
-    uart1_init                               0x0800e685   Thumb Code   262  usart.o(i.uart1_init)
-    uart2_init                               0x0800e79d   Thumb Code   162  usart.o(i.uart2_init)
-    __mathlib_zero                           0x0800e8d8   Data           8  qnan.o(.constdata)
-    Region$$Table$$Base                      0x0800e8e0   Number         0  anon$$obj.o(Region$$Table)
-    Region$$Table$$Limit                     0x0800e900   Number         0  anon$$obj.o(Region$$Table)
+    rev_qe                                   0x0800b4a5   Thumb Code  2888  com4004.o(i.rev_qe)
+    send_action_message                      0x0800c001   Thumb Code   108  com1010.o(i.send_action_message)
+    send_data_sync                           0x0800c06d   Thumb Code   874  com4004.o(i.send_data_sync)
+    send_deepin_data_sync                    0x0800c439   Thumb Code  1336  com4004.o(i.send_deepin_data_sync)
+    send_device_info_sub                     0x0800c989   Thumb Code  2226  com4004.o(i.send_device_info_sub)
+    send_message                             0x0800d241   Thumb Code   196  com4004.o(i.send_message)
+    send_message_without_payload             0x0800d305   Thumb Code    60  com4004.o(i.send_message_without_payload)
+    sensors_init_all                         0x0800d341   Thumb Code    70  sensors.o(i.sensors_init_all)
+    sicp_alert_cmd                           0x0800d3fd   Thumb Code   208  com1010.o(i.sicp_alert_cmd)
+    sicp_ble_cmd                             0x0800d4dd   Thumb Code   122  com1010.o(i.sicp_ble_cmd)
+    sicp_broadcast                           0x0800d55d   Thumb Code    70  com1010.o(i.sicp_broadcast)
+    sicp_cmd_data                            0x0800d5a9   Thumb Code   140  com1010.o(i.sicp_cmd_data)
+    sicp_cmd_refresh                         0x0800d63d   Thumb Code   230  com1010.o(i.sicp_cmd_refresh)
+    sicp_config_cmd                          0x0800d72d   Thumb Code   760  com1010.o(i.sicp_config_cmd)
+    sicp_led_cmd                             0x0800da35   Thumb Code  1110  com1010.o(i.sicp_led_cmd)
+    sicp_qe_action_cmd                       0x0800de91   Thumb Code   544  com1010.o(i.sicp_qe_action_cmd)
+    sicp_receipt                             0x0800e0c5   Thumb Code    60  com1010.o(i.sicp_receipt)
+    sicp_send_heartbeart                     0x0800e101   Thumb Code   542  com1010.o(i.sicp_send_heartbeart)
+    sicp_send_message                        0x0800e32d   Thumb Code    88  com1010.o(i.sicp_send_message)
+    smokeModule_check                        0x0800e3a1   Thumb Code    26  sensors_gpio.o(i.smokeModule_check)
+    sqrt                                     0x0800e3c5   Thumb Code    76  sqrt.o(i.sqrt)
+    ssp_parse                                0x0800e411   Thumb Code   296  com4004.o(i.ssp_parse)
+    success_receipt                          0x0800e545   Thumb Code   104  com4004.o(i.success_receipt)
+    system_init                              0x0800e601   Thumb Code   178  main.o(i.system_init)
+    test_gpio_config                         0x0800e6c1   Thumb Code    46  main.o(i.test_gpio_config)
+    test_gpio_pwm                            0x0800e6f5   Thumb Code    40  main.o(i.test_gpio_pwm)
+    uart1_init                               0x0800e725   Thumb Code   262  usart.o(i.uart1_init)
+    uart2_init                               0x0800e83d   Thumb Code   162  usart.o(i.uart2_init)
+    __mathlib_zero                           0x0800e978   Data           8  qnan.o(.constdata)
+    Region$$Table$$Base                      0x0800e980   Number         0  anon$$obj.o(Region$$Table)
+    Region$$Table$$Limit                     0x0800e9a0   Number         0  anon$$obj.o(Region$$Table)
     __stdout                                 0x20000008   Data           4  usart.o(.data)
     mallco_dev                               0x20000018   Data          20  malloc.o(.data)
     Usart1_Rec_Cnt                           0x2000002c   Data           2  com4004.o(.data)
@@ -2847,9 +2848,9 @@ Memory Map of the image
 
   Image Entry point : 0x08000131
 
-  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x0000e9cc, Max: 0x00080000, ABSOLUTE)
+  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x0000ea6c, Max: 0x00080000, ABSOLUTE)
 
-    Execution Region ER_IROM1 (Base: 0x08000000, Size: 0x0000e900, Max: 0x00080000, ABSOLUTE)
+    Execution Region ER_IROM1 (Base: 0x08000000, Size: 0x0000e9a0, Max: 0x00080000, ABSOLUTE)
 
     Base Addr    Size         Type   Attr      Idx    E Section Name        Object
 
@@ -3143,44 +3144,43 @@ Memory Map of the image
     0x0800b064   0x00000140   Code   RO         1102    i.rev_deal          com1010.o
     0x0800b1a4   0x000002e8   Code   RO          849    i.rev_device_status  com4004.o
     0x0800b48c   0x00000018   Code   RO          850    i.rev_heart_beat    com4004.o
-    0x0800b4a4   0x00000ac4   Code   RO          851    i.rev_qe            com4004.o
-    0x0800bf68   0x0000006c   Code   RO         1103    i.send_action_message  com1010.o
-    0x0800bfd4   0x000003cc   Code   RO          853    i.send_data_sync    com4004.o
-    0x0800c3a0   0x00000550   Code   RO          854    i.send_deepin_data_sync  com4004.o
-    0x0800c8f0   0x000008b8   Code   RO          855    i.send_device_info_sub  com4004.o
-    0x0800d1a8   0x000000ba   Code   RO          857    i.send_message      com4004.o
-    0x0800d262   0x0000003c   Code   RO          858    i.send_message_without_payload  com4004.o
-    0x0800d29e   0x00000002   PAD
-    0x0800d2a0   0x000000bc   Code   RO         1301    i.sensors_init_all  sensors.o
-    0x0800d35c   0x000000e0   Code   RO         1105    i.sicp_alert_cmd    com1010.o
-    0x0800d43c   0x00000080   Code   RO         1106    i.sicp_ble_cmd      com1010.o
-    0x0800d4bc   0x0000004c   Code   RO         1107    i.sicp_broadcast    com1010.o
-    0x0800d508   0x00000094   Code   RO         1108    i.sicp_cmd_data     com1010.o
-    0x0800d59c   0x000000f0   Code   RO         1109    i.sicp_cmd_refresh  com1010.o
-    0x0800d68c   0x00000308   Code   RO         1110    i.sicp_config_cmd   com1010.o
-    0x0800d994   0x0000045c   Code   RO         1111    i.sicp_led_cmd      com1010.o
-    0x0800ddf0   0x00000234   Code   RO         1112    i.sicp_qe_action_cmd  com1010.o
-    0x0800e024   0x0000003c   Code   RO         1113    i.sicp_receipt      com1010.o
-    0x0800e060   0x0000022c   Code   RO         1114    i.sicp_send_heartbeart  com1010.o
-    0x0800e28c   0x00000060   Code   RO         1115    i.sicp_send_message  com1010.o
-    0x0800e2ec   0x00000012   Code   RO          461    i.skip              cjson.o
-    0x0800e2fe   0x00000002   PAD
-    0x0800e300   0x00000024   Code   RO         1390    i.smokeModule_check  sensors_gpio.o
-    0x0800e324   0x0000004c   Code   RO         5278    i.sqrt              m_ws.l(sqrt.o)
-    0x0800e370   0x00000134   Code   RO          860    i.ssp_parse         com4004.o
-    0x0800e4a4   0x000000b4   Code   RO          861    i.success_receipt   com4004.o
-    0x0800e558   0x00000006   Code   RO          462    i.suffix_object     cjson.o
-    0x0800e55e   0x00000002   PAD
-    0x0800e560   0x000000c0   Code   RO          164    i.system_init       main.o
-    0x0800e620   0x00000034   Code   RO          165    i.test_gpio_config  main.o
-    0x0800e654   0x00000030   Code   RO          166    i.test_gpio_pwm     main.o
-    0x0800e684   0x00000118   Code   RO          332    i.uart1_init        usart.o
-    0x0800e79c   0x000000ac   Code   RO          333    i.uart2_init        usart.o
-    0x0800e848   0x00000007   Data   RO          463    .constdata          cjson.o
-    0x0800e84f   0x00000001   PAD
-    0x0800e850   0x00000088   Data   RO         4921    .constdata          m_ws.l(pow.o)
-    0x0800e8d8   0x00000008   Data   RO         5276    .constdata          m_ws.l(qnan.o)
-    0x0800e8e0   0x00000020   Data   RO         5331    Region$$Table       anon$$obj.o
+    0x0800b4a4   0x00000b5c   Code   RO          851    i.rev_qe            com4004.o
+    0x0800c000   0x0000006c   Code   RO         1103    i.send_action_message  com1010.o
+    0x0800c06c   0x000003cc   Code   RO          853    i.send_data_sync    com4004.o
+    0x0800c438   0x00000550   Code   RO          854    i.send_deepin_data_sync  com4004.o
+    0x0800c988   0x000008b8   Code   RO          855    i.send_device_info_sub  com4004.o
+    0x0800d240   0x000000c4   Code   RO          857    i.send_message      com4004.o
+    0x0800d304   0x0000003c   Code   RO          858    i.send_message_without_payload  com4004.o
+    0x0800d340   0x000000bc   Code   RO         1301    i.sensors_init_all  sensors.o
+    0x0800d3fc   0x000000e0   Code   RO         1105    i.sicp_alert_cmd    com1010.o
+    0x0800d4dc   0x00000080   Code   RO         1106    i.sicp_ble_cmd      com1010.o
+    0x0800d55c   0x0000004c   Code   RO         1107    i.sicp_broadcast    com1010.o
+    0x0800d5a8   0x00000094   Code   RO         1108    i.sicp_cmd_data     com1010.o
+    0x0800d63c   0x000000f0   Code   RO         1109    i.sicp_cmd_refresh  com1010.o
+    0x0800d72c   0x00000308   Code   RO         1110    i.sicp_config_cmd   com1010.o
+    0x0800da34   0x0000045c   Code   RO         1111    i.sicp_led_cmd      com1010.o
+    0x0800de90   0x00000234   Code   RO         1112    i.sicp_qe_action_cmd  com1010.o
+    0x0800e0c4   0x0000003c   Code   RO         1113    i.sicp_receipt      com1010.o
+    0x0800e100   0x0000022c   Code   RO         1114    i.sicp_send_heartbeart  com1010.o
+    0x0800e32c   0x00000060   Code   RO         1115    i.sicp_send_message  com1010.o
+    0x0800e38c   0x00000012   Code   RO          461    i.skip              cjson.o
+    0x0800e39e   0x00000002   PAD
+    0x0800e3a0   0x00000024   Code   RO         1390    i.smokeModule_check  sensors_gpio.o
+    0x0800e3c4   0x0000004c   Code   RO         5278    i.sqrt              m_ws.l(sqrt.o)
+    0x0800e410   0x00000134   Code   RO          860    i.ssp_parse         com4004.o
+    0x0800e544   0x000000b4   Code   RO          861    i.success_receipt   com4004.o
+    0x0800e5f8   0x00000006   Code   RO          462    i.suffix_object     cjson.o
+    0x0800e5fe   0x00000002   PAD
+    0x0800e600   0x000000c0   Code   RO          164    i.system_init       main.o
+    0x0800e6c0   0x00000034   Code   RO          165    i.test_gpio_config  main.o
+    0x0800e6f4   0x00000030   Code   RO          166    i.test_gpio_pwm     main.o
+    0x0800e724   0x00000118   Code   RO          332    i.uart1_init        usart.o
+    0x0800e83c   0x000000ac   Code   RO          333    i.uart2_init        usart.o
+    0x0800e8e8   0x00000007   Data   RO          463    .constdata          cjson.o
+    0x0800e8ef   0x00000001   PAD
+    0x0800e8f0   0x00000088   Data   RO         4921    .constdata          m_ws.l(pow.o)
+    0x0800e978   0x00000008   Data   RO         5276    .constdata          m_ws.l(qnan.o)
+    0x0800e980   0x00000020   Data   RO         5331    Region$$Table       anon$$obj.o
 
 
     Execution Region RW_IRAM1 (Base: 0x20000000, Size: 0x0000f048, Max: 0x00010000, ABSOLUTE)
@@ -3229,7 +3229,7 @@ Image component sizes
 
       4216        232          7         12          0      20754   cjson.o
      10582        338          0         24        487      17312   com1010.o
-     24908       2176          0         34      42220      35803   com4004.o
+     25070       2174          0         34      42220      35931   com4004.o
          0          0          0          0          0         32   core_cm3.o
         68         18          0          4          0     264949   delay.o
        132          4          0          0          0        439   led.o
@@ -3259,9 +3259,9 @@ Image component sizes
       1112        148          0          4          0       6284   usart.o
 
     ----------------------------------------------------------------------
-     51216       3844        344        196      61308     658749   Object Totals
+     51376       3842        344        196      61308     658877   Object Totals
          0          0         32          0          0          0   (incl. Generated)
-        42          0          1         10          7          0   (incl. Padding)
+        40          0          1         10          7          0   (incl. Padding)
 
     ----------------------------------------------------------------------
 
@@ -3342,15 +3342,15 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     59160       4188        488        204      61308     648525   Grand Totals
-     59160       4188        488        204      61308     648525   ELF Image Totals
-     59160       4188        488        204          0          0   ROM Totals
+     59320       4186        488        204      61308     648653   Grand Totals
+     59320       4186        488        204      61308     648653   ELF Image Totals
+     59320       4186        488        204          0          0   ROM Totals
 
 ==============================================================================
 
-    Total RO  Size (Code + RO Data)                59648 (  58.25kB)
+    Total RO  Size (Code + RO Data)                59808 (  58.41kB)
     Total RW  Size (RW Data + ZI Data)             61512 (  60.07kB)
-    Total ROM Size (Code + RO Data + RW Data)      59852 (  58.45kB)
+    Total ROM Size (Code + RO Data + RW Data)      60012 (  58.61kB)
 
 ==============================================================================
 

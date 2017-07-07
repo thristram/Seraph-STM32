@@ -3,7 +3,7 @@
 <title>Static Call Graph - [..\OBJ\ssp32.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image ..\OBJ\ssp32.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5.03 [Build 76]: Last Updated: Thu Jul 06 23:30:02 2017
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5.03 [Build 76]: Last Updated: Fri Jul 07 22:38:09 2017
 <BR><P>
 <H3>Maximum Stack Usage =        464 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -2264,6 +2264,7 @@ Global Symbols
 </UL>
 <BR>[Called By]<UL><LI><a href="#[f2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Usart1_Send
 <LI><a href="#[d9]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sicp_qe_action_cmd
+<LI><a href="#[db]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;rev_qe
 <LI><a href="#[f4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Usart2_Send
 <LI><a href="#[159]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sicp_send_message
 <LI><a href="#[ff]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;addNodeToUartTxSLLast
@@ -2414,8 +2415,8 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[e7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;analyze
 </UL>
 
-<P><STRONG><a name="[db]"></a>rev_qe</STRONG> (Thumb, 2736 bytes, Stack size 64 bytes, com4004.o(i.rev_qe))
-<BR><BR>[Stack]<UL><LI>Max Depth = 248<LI>Call Chain = rev_qe &rArr; cJSON_PrintUnformatted &rArr; print_value &rArr; print_number &rArr; floor &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
+<P><STRONG><a name="[db]"></a>rev_qe</STRONG> (Thumb, 2888 bytes, Stack size 72 bytes, com4004.o(i.rev_qe))
+<BR><BR>[Stack]<UL><LI>Max Depth = 256<LI>Call Chain = rev_qe &rArr; cJSON_PrintUnformatted &rArr; print_value &rArr; print_number &rArr; floor &rArr; __aeabi_dadd &rArr; _double_epilogue &rArr; _double_round
 </UL>
 <BR>[Calls]<UL><LI><a href="#[114]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cJSON_PrintUnformatted
 <LI><a href="#[10c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cJSON_Delete
@@ -2425,6 +2426,7 @@ Global Symbols
 <LI><a href="#[107]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cJSON_CreateArray
 <LI><a href="#[105]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cJSON_AddItemToObject
 <LI><a href="#[103]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cJSON_AddItemToArray
+<LI><a href="#[f3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;mymemcpy
 <LI><a href="#[65]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2d
 <LI><a href="#[126]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;send_message
 <LI><a href="#[125]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;init_tx_message
@@ -2492,7 +2494,7 @@ Global Symbols
 <LI><a href="#[102]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;rev_analyze
 </UL>
 
-<P><STRONG><a name="[126]"></a>send_message</STRONG> (Thumb, 186 bytes, Stack size 24 bytes, com4004.o(i.send_message))
+<P><STRONG><a name="[126]"></a>send_message</STRONG> (Thumb, 196 bytes, Stack size 24 bytes, com4004.o(i.send_message))
 <BR><BR>[Stack]<UL><LI>Max Depth = 88<LI>Call Chain = send_message &rArr; addNodeToUartTxSLLast &rArr; mymalloc &rArr; mem_malloc
 </UL>
 <BR>[Calls]<UL><LI><a href="#[f3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;mymemcpy

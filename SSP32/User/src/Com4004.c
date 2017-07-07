@@ -1644,6 +1644,8 @@ void send_message(Txmessage *tx)
 	mymemset(temp_send_buf,0,1024);
 	send_buf = temp_send_buf;
 	temp_send_buf = send_buf;
+	*send_buf++ = 0xBB;
+	*send_buf++ = 0xBB;
 	*send_buf++ = (tx->tx_fix_header.ch.first_ch_byte);
 	txlen++;
 	while(tx->tx_fix_header.r_length_len--){
@@ -2268,6 +2270,7 @@ void rev_qe(void)
 	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
 	char *payload;
 	char *topic = "";
+	char deviceid[10];
 	if(rev_action_done2){
 		rev_action_done2 = 0;
 		cs = cJSON_CreateObject();
@@ -2285,7 +2288,10 @@ void rev_qe(void)
 				cJSON_AddNumberToObject(sub_cs3,"seqid",1);
 				cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
 				cJSON_AddStringToObject(sub_cs3,"msg","success");
-				cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
+				deviceid[0] = 'S';deviceid[1] = 'T';
+				mymemcpy(deviceid+2,ss.st[i].deviceid,8);
+				cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+				//cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
 				cJSON_AddNumberToObject(sub_cs3,"C1",ss.st[i].ch1_status);
 				cJSON_AddNumberToObject(sub_cs3,"C2",ss.st[i].ch2_status);
 				cJSON_AddNumberToObject(sub_cs3,"C3",ss.st[i].ch3_status);
@@ -2298,7 +2304,10 @@ void rev_qe(void)
 				cJSON_AddNumberToObject(sub_cs3,"seqid",1);
 				cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
 				cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-				cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
+				deviceid[0] = 'S';deviceid[1] = 'T';
+				mymemcpy(deviceid+2,ss.st[i].deviceid,8);
+				cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+				//cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
 				cJSON_AddNumberToObject(sub_cs3,"C1",ss.st[i].ch1_status);
 				cJSON_AddNumberToObject(sub_cs3,"C2",ss.st[i].ch2_status);
 				cJSON_AddNumberToObject(sub_cs3,"C3",ss.st[i].ch3_status);
@@ -2314,7 +2323,9 @@ void rev_qe(void)
 					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
 					cJSON_AddStringToObject(sub_cs3,"msg","success");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].slc[j].deviceid,sub_cs3=cJSON_CreateObject());
+					deviceid[0] = 'S';deviceid[1] = 'L';
+					mymemcpy(deviceid+2,ss.sc[i].slc[j].deviceid,8);
+					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].slc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].slc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].slc[j].ch3_status);
@@ -2327,7 +2338,9 @@ void rev_qe(void)
 					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
 					cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].slc[j].deviceid,sub_cs3=cJSON_CreateObject());
+					deviceid[0] = 'S';deviceid[1] = 'L';
+					mymemcpy(deviceid+2,ss.sc[i].slc[j].deviceid,8);
+					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].slc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].slc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].slc[j].ch3_status);
@@ -2340,7 +2353,9 @@ void rev_qe(void)
 					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
 					cJSON_AddStringToObject(sub_cs3,"msg","success");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].spc[j].deviceid,sub_cs3=cJSON_CreateObject());
+					deviceid[0] = 'S';deviceid[1] = 'P';
+					mymemcpy(deviceid+2,ss.sc[i].spc[j].deviceid,8);
+					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].spc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].spc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].spc[j].ch3_status);
@@ -2353,7 +2368,9 @@ void rev_qe(void)
 					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
 					cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].spc[j].deviceid,sub_cs3=cJSON_CreateObject());
+					deviceid[0] = 'S';deviceid[1] = 'P';
+					mymemcpy(deviceid+2,ss.sc[i].spc[j].deviceid,8);
+					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].spc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].spc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].spc[j].ch3_status);
