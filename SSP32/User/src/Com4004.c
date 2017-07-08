@@ -5,7 +5,6 @@
 #include <stdlib.h>
 
 
-
 int mystrcmp(unsigned char *str1,const unsigned char *str2)
 {
 	int ret=0;
@@ -226,8 +225,9 @@ void rev_analyze(u8 *topic_buf,u8 *cjson_buf)
 		else if(strncmp(temp_topicbuf,"/device/info/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
 		{
 			ack_diss = 1;
-			ready_ss_post = 1;
-			send_device_info_sub();
+			//ready_ss_post = 1;
+			//send_device_info_sub();
+			send_device_info_ss(0x02,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L);
 		}
 		else if(strncmp(temp_topicbuf,"/config/strategy/hpst",Rxfr4004.rx_var_header.topic_lengthL) == 0)
 		{
@@ -799,6 +799,7 @@ void deal_data_sync(u8 *buf)
 void deal_device_list(u8 *buf)
 {
 	cJSON *root,*tmp,*level1,*level2;
+	u8 double_break = 0;
 	int i,j,k,cmd_size;
 	root = cJSON_Parse((char*)buf);
 	if(root)
@@ -821,8 +822,8 @@ void deal_device_list(u8 *buf)
 											for(j = 0;j < 5;j++){
 												for(k=0;k < 15;k++){
 														//if(strncmp(ss.sc[j].slc[k].deviceid,tmp->valuestring,8)==0){//寻找到SC下对应ID的SLC
-														if(!ss.sc[j].slc[k].deviceid[0]){//寻找device id为空的SLC
-														mymemcpy(ss.sc[j].slc[k].deviceid,tmp->valuestring,8);
+														if(ss.sc[j].slc[k].deviceid[0] == 0x00){//寻找device id为空的SLC
+														mymemcpy(ss.sc[j].slc[k].deviceid,(tmp->valuestring+2),8);
 														tmp = cJSON_GetObjectItem(level2,"model");
 														if(tmp && tmp->valuestring){
 															mymemcpy(ss.sc[j].slc[k].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -831,16 +832,19 @@ void deal_device_list(u8 *buf)
 														if(tmp && tmp->valuestring){
 															mymemcpy(ss.sc[j].slc[k].coord,tmp->valuestring,strlen(tmp->valuestring));
 														}
+														double_break = 1;
+														break;
 													}
 												}
+												if(double_break)	{double_break = 0;break;}
 											}
 										}
 										else if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'P')){
 											for(j = 0;j < 5;j++){
 												for(k=0;k < 15;k++){
 														//if(strncmp(ss.sc[j].spc[k].deviceid,tmp->valuestring,8)==0){//寻找到SC下对应ID的SPC
-														if(!ss.sc[j].spc[k].deviceid[0]){//寻找device id为空的SPC
-														mymemcpy(ss.sc[j].spc[k].deviceid,tmp->valuestring,8);
+														if(ss.sc[j].spc[k].deviceid[0] == 0x00){//寻找device id为空的SPC
+														mymemcpy(ss.sc[j].spc[k].deviceid,(tmp->valuestring+2),8);
 														tmp = cJSON_GetObjectItem(level2,"model");
 														if(tmp && tmp->valuestring){
 															mymemcpy(ss.sc[j].spc[k].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -849,15 +853,18 @@ void deal_device_list(u8 *buf)
 														if(tmp && tmp->valuestring){
 															mymemcpy(ss.sc[j].spc[k].coord,tmp->valuestring,strlen(tmp->valuestring));
 														}
+														double_break = 1;
+														break;
 													}
 												}
+												if(double_break)	{double_break = 0;break;}
 											}
 										}
 										else if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'C')){
 											for(j = 0;j < 5;j++){//找寻SS下对应ID的SC
 													//if(strncmp(ss.sc[i].deviceid,tmp->valuestring,8)){
-													if(!ss.sc[j].deviceid[0]){//寻找device id为空的SC
-													mymemcpy(ss.sc[j].deviceid,tmp->valuestring,8);
+													if(ss.sc[j].deviceid[0] == 0x00){//寻找device id为空的SC
+													mymemcpy(ss.sc[j].deviceid,(tmp->valuestring+2),8);
 													tmp = cJSON_GetObjectItem(level2,"model");
 													if(tmp && tmp->valuestring){
 														mymemcpy(ss.sc[j].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -866,14 +873,15 @@ void deal_device_list(u8 *buf)
 													if(tmp && tmp->valuestring){
 														mymemcpy(ss.sc[j].coord,tmp->valuestring,strlen(tmp->valuestring));
 													}
-												}
+													break;
+												}	
 											}
 										}
 										else if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'T')){
 											for(j = 0;j < 20;j++){//找寻SS下deviceid为空的st
 												//if(strncmp(ss.st[i].deviceid,tmp->valuestring,8)){
-												if(!ss.st[j].deviceid[0]){//寻找device id为空的ST
-													mymemcpy(ss.st[j].deviceid,tmp->valuestring,8);
+												if(ss.st[j].deviceid[0] == 0x00){//寻找device id为空的ST
+													mymemcpy(ss.st[j].deviceid,(tmp->valuestring+2),8);
 													tmp = cJSON_GetObjectItem(level2,"model");
 													if(tmp && tmp->valuestring){
 														mymemcpy(ss.st[j].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -882,6 +890,7 @@ void deal_device_list(u8 *buf)
 													if(tmp && tmp->valuestring){
 														mymemcpy(ss.st[j].coord,tmp->valuestring,strlen(tmp->valuestring));
 													}
+													break;
 												}
 											}
 										}
@@ -1909,6 +1918,33 @@ void send_deepin_data_sync(void)
 	init_tx_message(0x83,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
 	send_message(&Txto4004);
 }
+//发送SS的device info
+//1.上电3s后主动发送一次
+//2.收到esh的device info ss包请求时
+void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L)
+{
+	cJSON *cs;
+	int i,j;
+	char *payload;
+	char *topic = "";
+	//if(ready_ss_post)
+	//{
+		//ready_ss_post = 0;
+		cs = cJSON_CreateObject(); 
+		cJSON_AddStringToObject(cs,"deviceID",ss.deviceid);
+		cJSON_AddStringToObject(cs,"model",ss.model);
+		cJSON_AddStringToObject(cs,"firmware",ss.firmware);
+		cJSON_AddNumberToObject(cs,"HWTtest",ss.HWTtest);
+		cJSON_AddNumberToObject(cs,"meshID",ss.meshid);
+		cJSON_AddStringToObject(cs,"macWiFi",ss.macwifi);
+		payload = cJSON_PrintUnformatted(cs);
+		if(payload)	cJSON_Delete(cs);
+		if(type == 0x01)	init_tx_message(0x43,0x01,0x00,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+		else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
+		send_message(&Txto4004);
+	//}
+}
+
 
 //上电收到ST/SC/SLC/SPC后转发给eSH，上电推送自身数据
 //uart2接收到ST/SC/SLC/SPC自身数据后，存储在ss.sc[]/ss.st[]/ss.slc[]/ss.spc中
@@ -1919,32 +1955,23 @@ void send_device_info_sub(void)
 	int i,j;
 	char *payload;
 	char *topic = "";
+	u8 tmp_deviceid[10];
 	temp_counter = (u8)TIM2->CNT;
 	gene_message_id_H = random(temp_counter);
 	temp_counter = (u8)TIM2->CNT;
 	gene_message_id_L = random(temp_counter);
-	if(ready_ss_post)
-	{
-		ready_ss_post = 0;
-		cs = cJSON_CreateObject(); 
-		cJSON_AddStringToObject(cs,"deviceID",ss.deviceid);
-		cJSON_AddStringToObject(cs,"model",ss.model);
-		cJSON_AddStringToObject(cs,"firmware",ss.firmware);
-		cJSON_AddNumberToObject(cs,"HWTtest",ss.HWTtest);
-		cJSON_AddNumberToObject(cs,"meshID",ss.meshid);
-		cJSON_AddStringToObject(cs,"macWiFi",ss.macwifi);
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x83,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	}
+	
 	
 	if(ready_st_post){
 		ready_st_post = 0;
 		for(i = 0;i < 20;i++){
-			if((ss.st[i].posted) && (!ss.st[i].deviceid[0])){//还没有被推送过且ss.st[i].deviceid[]已经有数据
+			if((!ss.st[i].posted) && (ss.st[i].deviceid[0]) && (ready_st_post_meshid == ss.st[i].meshid)){//还没有被推送过且ss.st[i].deviceid[]已经有数据
+				ss.st[i].posted = 1;
+				tmp_deviceid[0] = 'S';
+				tmp_deviceid[1] = 'T';
+				mymemcpy((tmp_deviceid+2),ss.st[i].deviceid,8);
 				cs = cJSON_CreateObject(); 
-				cJSON_AddStringToObject(cs,"deviceID",ss.st[i].deviceid);
+				cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 				cJSON_AddStringToObject(cs,"model",ss.st[i].model);
 				cJSON_AddStringToObject(cs,"firmware",ss.st[i].firmware);
 				cJSON_AddNumberToObject(cs,"HWTtest",ss.st[i].HWTtest);
@@ -1952,7 +1979,7 @@ void send_device_info_sub(void)
 				cJSON_AddStringToObject(cs,"macWiFi",ss.st[i].macwifi);
 				payload = cJSON_PrintUnformatted(cs);
 				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x83,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+				init_tx_message(0x43,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
 				send_message(&Txto4004);
 			}
 		}
@@ -1961,9 +1988,13 @@ void send_device_info_sub(void)
 	{
 		ready_sc_post = 0;
 		for(i = 0;i < 5;i++){
-			if((ss.sc[i].posted) && (!ss.sc[i].deviceid[0])){//还没有被推送过且ss.sc[i].deviceid[]已经有数据
+			if((!ss.sc[i].posted) && (ss.sc[i].deviceid[0]) &&(ready_sc_post_meshid == ss.sc[i].meshid)){//还没有被推送过且ss.sc[i].deviceid[]已经有数据
+				ss.sc[i].posted = 1;
+				tmp_deviceid[0] = 'S';
+				tmp_deviceid[1] = 'C';
+				mymemcpy((tmp_deviceid+2),ss.sc[i].deviceid,8);
 				cs = cJSON_CreateObject(); 
-				cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].deviceid);
+				cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 				cJSON_AddStringToObject(cs,"model",ss.sc[i].model);
 				cJSON_AddStringToObject(cs,"firmware",ss.sc[i].firmware);
 				cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].HWTtest);
@@ -1972,7 +2003,7 @@ void send_device_info_sub(void)
 				cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].macwifi);
 				payload = cJSON_PrintUnformatted(cs);
 				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x83,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+				init_tx_message(0x43,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
 				send_message(&Txto4004);
 			}
 		}
@@ -1983,9 +2014,13 @@ void send_device_info_sub(void)
 		ready_slc_post = 0;
 		for(i = 0;i < 5;i++){
 			for(j = 0;j < 15;j++){
-				if((ss.sc[i].slc[j].posted) && (!ss.sc[i].slc[j].deviceid[0])){//还没有被推送过且ss.slc[i].deviceid[]已经有数据
+				if((!ss.sc[i].slc[j].posted) && (ss.sc[i].slc[j].deviceid[0]) && (ready_slc_post_mdid == ss.sc[i].slc[j].MDID)){//还没有被推送过且ss.slc[i].deviceid[]已经有数据
+					ss.sc[i].slc[j].posted = 1;
+					tmp_deviceid[0] = 'S';
+					tmp_deviceid[1] = 'L';
+					mymemcpy((tmp_deviceid+2),ss.sc[i].slc[j].deviceid,8);
 					cs = cJSON_CreateObject(); 
-					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].slc[j].deviceid);
+					cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 					cJSON_AddStringToObject(cs,"model",ss.sc[i].slc[j].model);
 					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].slc[j].firmware);
 					cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].slc[j].HWTtest);
@@ -1994,7 +2029,7 @@ void send_device_info_sub(void)
 					cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].slc[j].macwifi);
 					payload = cJSON_PrintUnformatted(cs);
 					if(payload)	cJSON_Delete(cs);
-					init_tx_message(0x83,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+					init_tx_message(0x43,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
 					send_message(&Txto4004);
 				}
 			}
@@ -2006,9 +2041,14 @@ void send_device_info_sub(void)
 		ready_spc_post = 0;
 		for(i = 0;i < 5;i++){
 			for(j = 0;j < 15;j++){
-				if((ss.sc[i].spc[j].posted) && (!ss.sc[i].spc[j].deviceid[0])){//还没有被推送过且ss.spc[i].deviceid[]已经有数据
+				if((!ss.sc[i].spc[j].posted) && (ss.sc[i].spc[j].deviceid[0]) && (ready_spc_post_mdid == ss.sc[i].spc[j].MDID)){//还没有被推送过且ss.spc[i].deviceid[]已经有数据
+					ss.sc[i].spc[j].posted = 1;
+
+					tmp_deviceid[0] = 'S';
+					tmp_deviceid[1] = 'P';
+					mymemcpy((tmp_deviceid+2),ss.sc[i].spc[j].deviceid,8);
 					cs = cJSON_CreateObject(); 
-					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].spc[j].deviceid);
+					cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 					cJSON_AddStringToObject(cs,"model",ss.sc[i].spc[j].model);
 					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].spc[j].firmware);
 					cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].spc[j].HWTtest);

@@ -356,11 +356,14 @@ void deal_device_info(u8 type)
 	u8  rev_deviceid[8];
 	u8  i,j;
 	u8 	acceptable = 0;
+	ready_sc_post_meshid = 0;
+	ready_st_post_meshid = 0;
+	ready_slc_post_mdid = 0;
+	ready_slc_post_mdid = 0;
 	switch(type)
 	{
 		case 0xB1://SC
 			rev_B1 = 1;
-			
 			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
 			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
 			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
@@ -371,7 +374,7 @@ void deal_device_info(u8 type)
 			rev_deviceid[7] = hex2ascii((sicp_buf[10]&0x0F));
 			for(i = 0;i<5;i++){
 				if(strncmp(ss.sc[i].deviceid,rev_deviceid,8)==0){//找到对应device id的sc，说明device info合法
-					ss.sc[i].meshid = (((u16)sicp_buf[3])<<8) + (u16)sicp_buf[4];
+					ready_sc_post_meshid = ss.sc[i].meshid = (((u16)sicp_buf[3])<<8) + (u16)sicp_buf[4];
 					acceptable = 1;
 					if(sicp_buf[11] < 0x0F){
 						ss.sc[i].model[0] = hex2ascii(sicp_buf[11]);
@@ -428,9 +431,10 @@ void deal_device_info(u8 type)
 							ss.sc[i].slc[j].firmware[1] = hex2ascii((sicp_buf[12]&0x0F));
 						}
 						ss.sc[i].slc[j].HWTtest = sicp_buf[13];
-						ss.sc[i].slc[j].MDID = sicp_buf[14];
+						ready_slc_post_mdid = ss.sc[i].slc[j].MDID = sicp_buf[14];
 						sicp_receipt(0x02,sicp_buf[2],ss.sc[i].meshid);
 						ready_slc_post = 1;
+						
 					}
 				}
 			}
@@ -469,7 +473,7 @@ void deal_device_info(u8 type)
 							ss.sc[i].spc[j].firmware[1] = hex2ascii((sicp_buf[12]&0x0F));
 						}
 						ss.sc[i].spc[j].HWTtest = sicp_buf[13];
-						ss.sc[i].spc[j].MDID = sicp_buf[14];
+						ready_spc_post_mdid = ss.sc[i].spc[j].MDID = sicp_buf[14];
 						sicp_receipt(0x02,sicp_buf[2],ss.sc[i].meshid);
 						ready_spc_post = 1;
 					}
@@ -493,7 +497,7 @@ void deal_device_info(u8 type)
 			for(i = 0;i < 20;i++){
 				if(strncmp(ss.st[i].deviceid,rev_deviceid,8)==0){//找到对应device id的sc，说明device info合法
 					acceptable = 1;
-					ss.st[i].meshid = (((u16)sicp_buf[3])<<8) + (u16)sicp_buf[4];
+					ready_st_post_meshid = ss.st[i].meshid = (((u16)sicp_buf[3])<<8) + (u16)sicp_buf[4];
 					if(sicp_buf[11] < 0x0F){
 						ss.st[i].model[0] = hex2ascii(sicp_buf[11]);
 					}

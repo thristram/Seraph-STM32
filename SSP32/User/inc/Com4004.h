@@ -512,6 +512,10 @@ COM4004_EXT union  FLAG 		UART1Flag8_;
 #define rev_heartbeat				UART1Flag8_._flag_bit.bit1	//接收到Heartbeat包
 #define rev_st_rt						UART1Flag8_._flag_bit.bit2	//接收到st发出检测到运动
 
+COM4004_EXT u16 ready_sc_post_meshid;//准备推送的sc对应的meshid,SC和ST通过meshid来识别
+COM4004_EXT u16 ready_st_post_meshid;//准备推送的st对应的mdid
+COM4004_EXT u8 ready_slc_post_mdid;//准备推送的slc对应的mdid
+COM4004_EXT u8 ready_spc_post_mdid;//准备推送的spc对应的mdid
 
 COM4004_EXT u8 send_buf[100];
 COM4004_EXT u8 rev_buf[MAX_BUF_LEN];
@@ -559,6 +563,7 @@ COM4004_EXT void send_config_ss(void);
 COM4004_EXT void send_data_sync(u8 type);
 COM4004_EXT void send_deepin_data_sync(void);
 COM4004_EXT void send_device_info_sub(void);
+COM4004_EXT void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L);
 COM4004_EXT void send_device_malfunction(void);
 
 

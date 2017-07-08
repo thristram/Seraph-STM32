@@ -1,6 +1,8 @@
 #include "includes.h"
 #include "sensors.h"
 
+u16 sys_time;//记录系统上电运行时间
+
 void Task2ms(void);
 void Task100ms(void);
 void Task300ms(void);
@@ -9,9 +11,48 @@ void Task2s(void);
 
 void system_init(void)
 {
+	u8 i,j,k;
+	ss.deviceid[0] = 'S';
+	ss.deviceid[1] = 'S';
+	ss.deviceid[2] = 'E';
+	ss.deviceid[3] = '1';
+	ss.deviceid[4] = '1';
+	ss.deviceid[5] = 'T';
+	ss.deviceid[6] = '2';
+	ss.deviceid[7] = '6';
+	for(i = 0; i < 5; i++)
+	{
+		for(j = 0;j < 8;j++)
+		{
+			ss.sc[i].deviceid[j] = 0x00;
+			ss.sc[i].posted = 0;
+		}
+	}
+	for(i = 0; i < 20; i++)
+	{
+		for(j = 0;j < 8;j++)
+		{
+			ss.st[i].deviceid[j] = 0x00;
+			ss.st[i].posted = 0;
+		}
+	}
+	for(i = 0; i < 5; i++)
+	{
+		for(j = 0;j < 15;j++)
+		{
+			ss.sc[i].slc[j].posted = 0;
+			ss.sc[i].spc[j].posted = 0;
+			for(k= 0; k < 8; k++)
+			{
+				ss.sc[i].slc[j].deviceid[k] = 0x00;
+				ss.sc[i].spc[j].deviceid[k] = 0x00;
+			}
+		}
+	}
+	
 	//ss.meshid = 0x8005;
 	//ss.sc[0].meshid = 0x8004;
-	ss.sc[0].deviceid[0] = 0x41;
+	/*ss.sc[0].deviceid[0] = 0x41;
 	ss.sc[0].deviceid[1] = 0x41;
 	ss.sc[0].deviceid[2] = 0x35;
 	ss.sc[0].deviceid[3] = 0x35;
@@ -35,6 +76,14 @@ void system_init(void)
 	ss.sc[0].slc[0].deviceid[5] = 0x42;
 	ss.sc[0].slc[0].deviceid[6] = 0x35;
 	ss.sc[0].slc[0].deviceid[7] = 0x37;
+	ss.sc[0].slc[2].deviceid[0] = 0x41;
+	ss.sc[0].slc[2].deviceid[1] = 0x41;
+	ss.sc[0].slc[2].deviceid[2] = 0x35;
+	ss.sc[0].slc[2].deviceid[3] = 0x35;
+	ss.sc[0].slc[2].deviceid[4] = 0x41;
+	ss.sc[0].slc[2].deviceid[5] = 0x42;
+	ss.sc[0].slc[2].deviceid[6] = 0x35;
+	ss.sc[0].slc[2].deviceid[7] = 0x39;
 	ss.sc[0].spc[1].deviceid[0] = 0x41;
 	ss.sc[0].spc[1].deviceid[1] = 0x41;
 	ss.sc[0].spc[1].deviceid[2] = 0x35;
@@ -42,7 +91,7 @@ void system_init(void)
 	ss.sc[0].spc[1].deviceid[4] = 0x41;
 	ss.sc[0].spc[1].deviceid[5] = 0x42;
 	ss.sc[0].spc[1].deviceid[6] = 0x35;
-	ss.sc[0].spc[1].deviceid[7] = 0x38;
+	ss.sc[0].spc[1].deviceid[7] = 0x38;*/
 	/*
 	u8 i;
 	for(i = 0; i < 20; i++) ss.st[i].meshid = 0x8001+i;
@@ -160,7 +209,7 @@ void Task100ms(void)
 		rev_action_perform();
 		rev_qe();
 		rev_device_status();
-		send_device_info_sub();
+		if(ack_dl)	send_device_info_sub();//要等待esh发送device list得到sub设备的device id
 		if(rev_20 && send_dr_refresh_cmd_done){rev_20 = 0;send_dr_refresh_cmd_done = 0;send_data_sync(0x83);}
 		
 		CO2_usart3_send();
@@ -182,6 +231,9 @@ void Task1s(void)
 	if(f_1s)
 	{
 		f_1s = 0;
+		if(sys_time < 65000)	sys_time++;
+		else									sys_time=65000;
+		if(sys_time == 3)			send_device_info_ss(0x01,0x00,0x00);//上电3s后主动推送1次ss的device info
 		//success_receipt();
 		LED1_Toggle;
 		LED2_Toggle;
