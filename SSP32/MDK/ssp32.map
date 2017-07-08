@@ -2179,116 +2179,116 @@ Image Symbol Table
     i.cJSON_strdup                           0x08003dcc   Section        0  cjson.o(i.cJSON_strdup)
     cJSON_strdup                             0x08003dcd   Thumb Code    40  cjson.o(i.cJSON_strdup)
     i.calc_send_r_length                     0x08003df8   Section        0  com4004.o(i.calc_send_r_length)
-    i.clear_sicp_buf                         0x08003eb0   Section        0  com1010.o(i.clear_sicp_buf)
-    i.clear_tx_buf                           0x08003ec8   Section        0  com4004.o(i.clear_tx_buf)
-    i.deal_action_backlight                  0x08003f30   Section        0  com4004.o(i.deal_action_backlight)
-    i.deal_action_perform                    0x080040c4   Section        0  com4004.o(i.deal_action_perform)
-    i.deal_action_refresh                    0x08004604   Section        0  com4004.o(i.deal_action_refresh)
-    i.deal_config_mesh                       0x08004674   Section        0  com4004.o(i.deal_config_mesh)
-    i.deal_config_ss                         0x080047f4   Section        0  com4004.o(i.deal_config_ss)
-    i.deal_config_st                         0x08004b6c   Section        0  com4004.o(i.deal_config_st)
-    i.deal_config_stragy_hpst                0x08004d94   Section        0  com4004.o(i.deal_config_stragy_hpst)
-    i.deal_config_strategy_htsp              0x080055fc   Section        0  com4004.o(i.deal_config_strategy_htsp)
-    i.deal_data_sync                         0x08005f08   Section        0  com4004.o(i.deal_data_sync)
-    i.deal_deepsyn_config_ss                 0x08005f34   Section        0  com4004.o(i.deal_deepsyn_config_ss)
-    i.deal_device_info                       0x080062d4   Section        0  com1010.o(i.deal_device_info)
-    i.deal_device_list                       0x08006b60   Section        0  com4004.o(i.deal_device_list)
-    i.deal_device_status                     0x08006f1c   Section        0  com4004.o(i.deal_device_status)
-    i.deal_mal_cmd                           0x080075a4   Section        0  com1010.o(i.deal_mal_cmd)
-    i.deal_qe                                0x08007718   Section        0  com4004.o(i.deal_qe)
-    i.deal_rev_status                        0x08007914   Section        0  com1010.o(i.deal_rev_status)
-    i.deal_sc_data_cmd                       0x08007b1c   Section        0  com1010.o(i.deal_sc_data_cmd)
-    i.dela_alarm                             0x08007c10   Section        0  com4004.o(i.dela_alarm)
-    i.delay_1us                              0x08007c44   Section        0  sensors.o(i.delay_1us)
-    i.delay_init                             0x08007cb4   Section        0  delay.o(i.delay_init)
-    i.deleteNodeFromUartTxSLHead             0x08007cf8   Section        0  list.o(i.deleteNodeFromUartTxSLHead)
-    i.floor                                  0x08007d64   Section        0  floor.o(i.floor)
-    i.fputc                                  0x08007e40   Section        0  usart.o(i.fputc)
-    i.get_sspbuf                             0x08007e5c   Section        0  usart.o(i.get_sspbuf)
-    i.hex2ascii                              0x08007ec8   Section        0  com1010.o(i.hex2ascii)
-    i.init_tx_message                        0x08007ee8   Section        0  com4004.o(i.init_tx_message)
-    i.main                                   0x08007f60   Section        0  main.o(i.main)
-    i.mem_free                               0x08007fcc   Section        0  malloc.o(i.mem_free)
-    i.mem_init                               0x08008014   Section        0  malloc.o(i.mem_init)
-    i.mem_malloc                             0x08008040   Section        0  malloc.o(i.mem_malloc)
-    i.mem_perused                            0x080080b8   Section        0  malloc.o(i.mem_perused)
-    i.myfree                                 0x080080e0   Section        0  malloc.o(i.myfree)
-    i.mymalloc                               0x080080fc   Section        0  malloc.o(i.mymalloc)
-    i.mymemcpy                               0x0800811c   Section        0  malloc.o(i.mymemcpy)
-    i.mymemset                               0x08008136   Section        0  malloc.o(i.mymemset)
-    i.parse_array                            0x0800814c   Section        0  cjson.o(i.parse_array)
-    parse_array                              0x0800814d   Thumb Code   166  cjson.o(i.parse_array)
-    i.parse_hex4                             0x080081f8   Section        0  cjson.o(i.parse_hex4)
-    parse_hex4                               0x080081f9   Thumb Code   276  cjson.o(i.parse_hex4)
-    i.parse_number                           0x0800830c   Section        0  cjson.o(i.parse_number)
-    parse_number                             0x0800830d   Thumb Code   432  cjson.o(i.parse_number)
-    i.parse_object                           0x080084c8   Section        0  cjson.o(i.parse_object)
-    parse_object                             0x080084c9   Thumb Code   270  cjson.o(i.parse_object)
-    i.parse_string                           0x080085dc   Section        0  cjson.o(i.parse_string)
-    parse_string                             0x080085dd   Thumb Code   448  cjson.o(i.parse_string)
-    i.parse_value                            0x080087a8   Section        0  cjson.o(i.parse_value)
-    parse_value                              0x080087a9   Thumb Code   158  cjson.o(i.parse_value)
-    i.pow                                    0x08008864   Section        0  pow.o(i.pow)
-    i.print_array                            0x08009244   Section        0  cjson.o(i.print_array)
-    print_array                              0x08009245   Thumb Code   352  cjson.o(i.print_array)
-    i.print_number                           0x080093b0   Section        0  cjson.o(i.print_number)
-    print_number                             0x080093b1   Thumb Code   246  cjson.o(i.print_number)
-    i.print_object                           0x080094e4   Section        0  cjson.o(i.print_object)
-    print_object                             0x080094e5   Thumb Code   620  cjson.o(i.print_object)
-    i.print_string                           0x08009758   Section        0  cjson.o(i.print_string)
-    print_string                             0x08009759   Thumb Code    12  cjson.o(i.print_string)
-    i.print_string_ptr                       0x08009764   Section        0  cjson.o(i.print_string_ptr)
-    print_string_ptr                         0x08009765   Thumb Code   270  cjson.o(i.print_string_ptr)
-    i.print_value                            0x0800988c   Section        0  cjson.o(i.print_value)
-    print_value                              0x0800988d   Thumb Code   122  cjson.o(i.print_value)
-    i.random                                 0x08009920   Section        0  com4004.o(i.random)
-    i.rev_action_perform                     0x08009948   Section        0  com4004.o(i.rev_action_perform)
-    i.rev_analyze                            0x0800a140   Section        0  com4004.o(i.rev_analyze)
-    i.rev_anaylze                            0x0800a5cc   Section        0  com1010.o(i.rev_anaylze)
-    i.rev_deal                               0x0800b064   Section        0  com1010.o(i.rev_deal)
-    i.rev_device_status                      0x0800b1a4   Section        0  com4004.o(i.rev_device_status)
-    i.rev_heart_beat                         0x0800b48c   Section        0  com4004.o(i.rev_heart_beat)
-    i.rev_qe                                 0x0800b4a4   Section        0  com4004.o(i.rev_qe)
-    i.send_action_message                    0x0800c000   Section        0  com1010.o(i.send_action_message)
-    i.send_data_sync                         0x0800c06c   Section        0  com4004.o(i.send_data_sync)
-    i.send_deepin_data_sync                  0x0800c438   Section        0  com4004.o(i.send_deepin_data_sync)
-    i.send_device_info_sub                   0x0800c988   Section        0  com4004.o(i.send_device_info_sub)
-    i.send_message                           0x0800d240   Section        0  com4004.o(i.send_message)
-    i.send_message_without_payload           0x0800d304   Section        0  com4004.o(i.send_message_without_payload)
-    i.sensors_init_all                       0x0800d340   Section        0  sensors.o(i.sensors_init_all)
-    i.sicp_alert_cmd                         0x0800d3fc   Section        0  com1010.o(i.sicp_alert_cmd)
-    i.sicp_ble_cmd                           0x0800d4dc   Section        0  com1010.o(i.sicp_ble_cmd)
-    i.sicp_broadcast                         0x0800d55c   Section        0  com1010.o(i.sicp_broadcast)
-    i.sicp_cmd_data                          0x0800d5a8   Section        0  com1010.o(i.sicp_cmd_data)
-    i.sicp_cmd_refresh                       0x0800d63c   Section        0  com1010.o(i.sicp_cmd_refresh)
-    i.sicp_config_cmd                        0x0800d72c   Section        0  com1010.o(i.sicp_config_cmd)
-    i.sicp_led_cmd                           0x0800da34   Section        0  com1010.o(i.sicp_led_cmd)
-    i.sicp_qe_action_cmd                     0x0800de90   Section        0  com1010.o(i.sicp_qe_action_cmd)
-    i.sicp_receipt                           0x0800e0c4   Section        0  com1010.o(i.sicp_receipt)
-    i.sicp_send_heartbeart                   0x0800e100   Section        0  com1010.o(i.sicp_send_heartbeart)
-    i.sicp_send_message                      0x0800e32c   Section        0  com1010.o(i.sicp_send_message)
-    i.skip                                   0x0800e38c   Section        0  cjson.o(i.skip)
-    skip                                     0x0800e38d   Thumb Code    18  cjson.o(i.skip)
-    i.smokeModule_check                      0x0800e3a0   Section        0  sensors_gpio.o(i.smokeModule_check)
-    i.sqrt                                   0x0800e3c4   Section        0  sqrt.o(i.sqrt)
-    i.ssp_parse                              0x0800e410   Section        0  com4004.o(i.ssp_parse)
-    i.success_receipt                        0x0800e544   Section        0  com4004.o(i.success_receipt)
-    i.suffix_object                          0x0800e5f8   Section        0  cjson.o(i.suffix_object)
-    suffix_object                            0x0800e5f9   Thumb Code     6  cjson.o(i.suffix_object)
-    i.system_init                            0x0800e600   Section        0  main.o(i.system_init)
-    i.test_gpio_config                       0x0800e6c0   Section        0  main.o(i.test_gpio_config)
-    i.test_gpio_pwm                          0x0800e6f4   Section        0  main.o(i.test_gpio_pwm)
-    i.uart1_init                             0x0800e724   Section        0  usart.o(i.uart1_init)
-    i.uart2_init                             0x0800e83c   Section        0  usart.o(i.uart2_init)
-    .constdata                               0x0800e8e8   Section        7  cjson.o(.constdata)
-    firstByteMark                            0x0800e8e8   Data           7  cjson.o(.constdata)
-    .constdata                               0x0800e8f0   Section      136  pow.o(.constdata)
-    bp                                       0x0800e8f0   Data          16  pow.o(.constdata)
-    dp_h                                     0x0800e900   Data          16  pow.o(.constdata)
-    dp_l                                     0x0800e910   Data          16  pow.o(.constdata)
-    L                                        0x0800e920   Data          48  pow.o(.constdata)
-    P                                        0x0800e950   Data          40  pow.o(.constdata)
-    .constdata                               0x0800e978   Section        8  qnan.o(.constdata)
+    i.clear_sicp_buf                         0x08003ebc   Section        0  com1010.o(i.clear_sicp_buf)
+    i.clear_tx_buf                           0x08003ed4   Section        0  com4004.o(i.clear_tx_buf)
+    i.deal_action_backlight                  0x08003f3c   Section        0  com4004.o(i.deal_action_backlight)
+    i.deal_action_perform                    0x080040d0   Section        0  com4004.o(i.deal_action_perform)
+    i.deal_action_refresh                    0x08004610   Section        0  com4004.o(i.deal_action_refresh)
+    i.deal_config_mesh                       0x08004680   Section        0  com4004.o(i.deal_config_mesh)
+    i.deal_config_ss                         0x08004800   Section        0  com4004.o(i.deal_config_ss)
+    i.deal_config_st                         0x08004b78   Section        0  com4004.o(i.deal_config_st)
+    i.deal_config_stragy_hpst                0x08004da0   Section        0  com4004.o(i.deal_config_stragy_hpst)
+    i.deal_config_strategy_htsp              0x08005608   Section        0  com4004.o(i.deal_config_strategy_htsp)
+    i.deal_data_sync                         0x08005f14   Section        0  com4004.o(i.deal_data_sync)
+    i.deal_deepsyn_config_ss                 0x08005f40   Section        0  com4004.o(i.deal_deepsyn_config_ss)
+    i.deal_device_info                       0x080062e0   Section        0  com1010.o(i.deal_device_info)
+    i.deal_device_list                       0x08006b6c   Section        0  com4004.o(i.deal_device_list)
+    i.deal_device_status                     0x08006f28   Section        0  com4004.o(i.deal_device_status)
+    i.deal_mal_cmd                           0x080075b0   Section        0  com1010.o(i.deal_mal_cmd)
+    i.deal_qe                                0x08007724   Section        0  com4004.o(i.deal_qe)
+    i.deal_rev_status                        0x08007920   Section        0  com1010.o(i.deal_rev_status)
+    i.deal_sc_data_cmd                       0x08007b28   Section        0  com1010.o(i.deal_sc_data_cmd)
+    i.dela_alarm                             0x08007c1c   Section        0  com4004.o(i.dela_alarm)
+    i.delay_1us                              0x08007c50   Section        0  sensors.o(i.delay_1us)
+    i.delay_init                             0x08007cc0   Section        0  delay.o(i.delay_init)
+    i.deleteNodeFromUartTxSLHead             0x08007d04   Section        0  list.o(i.deleteNodeFromUartTxSLHead)
+    i.floor                                  0x08007d70   Section        0  floor.o(i.floor)
+    i.fputc                                  0x08007e4c   Section        0  usart.o(i.fputc)
+    i.get_sspbuf                             0x08007e68   Section        0  usart.o(i.get_sspbuf)
+    i.hex2ascii                              0x08007ed4   Section        0  com1010.o(i.hex2ascii)
+    i.init_tx_message                        0x08007ef4   Section        0  com4004.o(i.init_tx_message)
+    i.main                                   0x08007f6c   Section        0  main.o(i.main)
+    i.mem_free                               0x08007fd8   Section        0  malloc.o(i.mem_free)
+    i.mem_init                               0x08008020   Section        0  malloc.o(i.mem_init)
+    i.mem_malloc                             0x0800804c   Section        0  malloc.o(i.mem_malloc)
+    i.mem_perused                            0x080080c4   Section        0  malloc.o(i.mem_perused)
+    i.myfree                                 0x080080ec   Section        0  malloc.o(i.myfree)
+    i.mymalloc                               0x08008108   Section        0  malloc.o(i.mymalloc)
+    i.mymemcpy                               0x08008128   Section        0  malloc.o(i.mymemcpy)
+    i.mymemset                               0x08008142   Section        0  malloc.o(i.mymemset)
+    i.parse_array                            0x08008158   Section        0  cjson.o(i.parse_array)
+    parse_array                              0x08008159   Thumb Code   166  cjson.o(i.parse_array)
+    i.parse_hex4                             0x08008204   Section        0  cjson.o(i.parse_hex4)
+    parse_hex4                               0x08008205   Thumb Code   276  cjson.o(i.parse_hex4)
+    i.parse_number                           0x08008318   Section        0  cjson.o(i.parse_number)
+    parse_number                             0x08008319   Thumb Code   432  cjson.o(i.parse_number)
+    i.parse_object                           0x080084d4   Section        0  cjson.o(i.parse_object)
+    parse_object                             0x080084d5   Thumb Code   270  cjson.o(i.parse_object)
+    i.parse_string                           0x080085e8   Section        0  cjson.o(i.parse_string)
+    parse_string                             0x080085e9   Thumb Code   448  cjson.o(i.parse_string)
+    i.parse_value                            0x080087b4   Section        0  cjson.o(i.parse_value)
+    parse_value                              0x080087b5   Thumb Code   158  cjson.o(i.parse_value)
+    i.pow                                    0x08008870   Section        0  pow.o(i.pow)
+    i.print_array                            0x08009250   Section        0  cjson.o(i.print_array)
+    print_array                              0x08009251   Thumb Code   352  cjson.o(i.print_array)
+    i.print_number                           0x080093bc   Section        0  cjson.o(i.print_number)
+    print_number                             0x080093bd   Thumb Code   246  cjson.o(i.print_number)
+    i.print_object                           0x080094f0   Section        0  cjson.o(i.print_object)
+    print_object                             0x080094f1   Thumb Code   620  cjson.o(i.print_object)
+    i.print_string                           0x08009764   Section        0  cjson.o(i.print_string)
+    print_string                             0x08009765   Thumb Code    12  cjson.o(i.print_string)
+    i.print_string_ptr                       0x08009770   Section        0  cjson.o(i.print_string_ptr)
+    print_string_ptr                         0x08009771   Thumb Code   270  cjson.o(i.print_string_ptr)
+    i.print_value                            0x08009898   Section        0  cjson.o(i.print_value)
+    print_value                              0x08009899   Thumb Code   122  cjson.o(i.print_value)
+    i.random                                 0x0800992c   Section        0  com4004.o(i.random)
+    i.rev_action_perform                     0x08009954   Section        0  com4004.o(i.rev_action_perform)
+    i.rev_analyze                            0x0800a14c   Section        0  com4004.o(i.rev_analyze)
+    i.rev_anaylze                            0x0800a5d8   Section        0  com1010.o(i.rev_anaylze)
+    i.rev_deal                               0x0800b070   Section        0  com1010.o(i.rev_deal)
+    i.rev_device_status                      0x0800b1b0   Section        0  com4004.o(i.rev_device_status)
+    i.rev_heart_beat                         0x0800b498   Section        0  com4004.o(i.rev_heart_beat)
+    i.rev_qe                                 0x0800b4b0   Section        0  com4004.o(i.rev_qe)
+    i.send_action_message                    0x0800c00c   Section        0  com1010.o(i.send_action_message)
+    i.send_data_sync                         0x0800c078   Section        0  com4004.o(i.send_data_sync)
+    i.send_deepin_data_sync                  0x0800c444   Section        0  com4004.o(i.send_deepin_data_sync)
+    i.send_device_info_sub                   0x0800c994   Section        0  com4004.o(i.send_device_info_sub)
+    i.send_message                           0x0800d24c   Section        0  com4004.o(i.send_message)
+    i.send_message_without_payload           0x0800d314   Section        0  com4004.o(i.send_message_without_payload)
+    i.sensors_init_all                       0x0800d350   Section        0  sensors.o(i.sensors_init_all)
+    i.sicp_alert_cmd                         0x0800d40c   Section        0  com1010.o(i.sicp_alert_cmd)
+    i.sicp_ble_cmd                           0x0800d4ec   Section        0  com1010.o(i.sicp_ble_cmd)
+    i.sicp_broadcast                         0x0800d56c   Section        0  com1010.o(i.sicp_broadcast)
+    i.sicp_cmd_data                          0x0800d5b8   Section        0  com1010.o(i.sicp_cmd_data)
+    i.sicp_cmd_refresh                       0x0800d64c   Section        0  com1010.o(i.sicp_cmd_refresh)
+    i.sicp_config_cmd                        0x0800d73c   Section        0  com1010.o(i.sicp_config_cmd)
+    i.sicp_led_cmd                           0x0800da44   Section        0  com1010.o(i.sicp_led_cmd)
+    i.sicp_qe_action_cmd                     0x0800dea0   Section        0  com1010.o(i.sicp_qe_action_cmd)
+    i.sicp_receipt                           0x0800e0d4   Section        0  com1010.o(i.sicp_receipt)
+    i.sicp_send_heartbeart                   0x0800e110   Section        0  com1010.o(i.sicp_send_heartbeart)
+    i.sicp_send_message                      0x0800e33c   Section        0  com1010.o(i.sicp_send_message)
+    i.skip                                   0x0800e39c   Section        0  cjson.o(i.skip)
+    skip                                     0x0800e39d   Thumb Code    18  cjson.o(i.skip)
+    i.smokeModule_check                      0x0800e3b0   Section        0  sensors_gpio.o(i.smokeModule_check)
+    i.sqrt                                   0x0800e3d4   Section        0  sqrt.o(i.sqrt)
+    i.ssp_parse                              0x0800e420   Section        0  com4004.o(i.ssp_parse)
+    i.success_receipt                        0x0800e54c   Section        0  com4004.o(i.success_receipt)
+    i.suffix_object                          0x0800e600   Section        0  cjson.o(i.suffix_object)
+    suffix_object                            0x0800e601   Thumb Code     6  cjson.o(i.suffix_object)
+    i.system_init                            0x0800e608   Section        0  main.o(i.system_init)
+    i.test_gpio_config                       0x0800e6c8   Section        0  main.o(i.test_gpio_config)
+    i.test_gpio_pwm                          0x0800e6fc   Section        0  main.o(i.test_gpio_pwm)
+    i.uart1_init                             0x0800e72c   Section        0  usart.o(i.uart1_init)
+    i.uart2_init                             0x0800e844   Section        0  usart.o(i.uart2_init)
+    .constdata                               0x0800e8f0   Section        7  cjson.o(.constdata)
+    firstByteMark                            0x0800e8f0   Data           7  cjson.o(.constdata)
+    .constdata                               0x0800e8f8   Section      136  pow.o(.constdata)
+    bp                                       0x0800e8f8   Data          16  pow.o(.constdata)
+    dp_h                                     0x0800e908   Data          16  pow.o(.constdata)
+    dp_l                                     0x0800e918   Data          16  pow.o(.constdata)
+    L                                        0x0800e928   Data          48  pow.o(.constdata)
+    P                                        0x0800e958   Data          40  pow.o(.constdata)
+    .constdata                               0x0800e980   Section        8  qnan.o(.constdata)
     .data                                    0x20000000   Section        4  delay.o(.data)
     fac_us                                   0x20000000   Data           1  delay.o(.data)
     fac_ms                                   0x20000002   Data           2  delay.o(.data)
@@ -2673,83 +2673,83 @@ Image Symbol Table
     cJSON_Parse                              0x08003cfd   Thumb Code    16  cjson.o(i.cJSON_Parse)
     cJSON_ParseWithOpts                      0x08003d0d   Thumb Code    96  cjson.o(i.cJSON_ParseWithOpts)
     cJSON_PrintUnformatted                   0x08003d71   Thumb Code    16  cjson.o(i.cJSON_PrintUnformatted)
-    calc_send_r_length                       0x08003df9   Thumb Code   178  com4004.o(i.calc_send_r_length)
-    clear_sicp_buf                           0x08003eb1   Thumb Code    20  com1010.o(i.clear_sicp_buf)
-    clear_tx_buf                             0x08003ec9   Thumb Code    94  com4004.o(i.clear_tx_buf)
-    deal_action_backlight                    0x08003f31   Thumb Code   314  com4004.o(i.deal_action_backlight)
-    deal_action_perform                      0x080040c5   Thumb Code  1334  com4004.o(i.deal_action_perform)
-    deal_action_refresh                      0x08004605   Thumb Code   104  com4004.o(i.deal_action_refresh)
-    deal_config_mesh                         0x08004675   Thumb Code   376  com4004.o(i.deal_config_mesh)
-    deal_config_ss                           0x080047f5   Thumb Code   672  com4004.o(i.deal_config_ss)
-    deal_config_st                           0x08004b6d   Thumb Code   478  com4004.o(i.deal_config_st)
-    deal_config_stragy_hpst                  0x08004d95   Thumb Code  2152  com4004.o(i.deal_config_stragy_hpst)
-    deal_config_strategy_htsp                0x080055fd   Thumb Code  2306  com4004.o(i.deal_config_strategy_htsp)
-    deal_data_sync                           0x08005f09   Thumb Code    40  com4004.o(i.deal_data_sync)
-    deal_deepsyn_config_ss                   0x08005f35   Thumb Code   732  com4004.o(i.deal_deepsyn_config_ss)
-    deal_device_info                         0x080062d5   Thumb Code  2180  com1010.o(i.deal_device_info)
-    deal_device_list                         0x08006b61   Thumb Code   908  com4004.o(i.deal_device_list)
-    deal_device_status                       0x08006f1d   Thumb Code  1652  com4004.o(i.deal_device_status)
-    deal_mal_cmd                             0x080075a5   Thumb Code   354  com1010.o(i.deal_mal_cmd)
-    deal_qe                                  0x08007719   Thumb Code   504  com4004.o(i.deal_qe)
-    deal_rev_status                          0x08007915   Thumb Code   504  com1010.o(i.deal_rev_status)
-    deal_sc_data_cmd                         0x08007b1d   Thumb Code   236  com1010.o(i.deal_sc_data_cmd)
-    dela_alarm                               0x08007c11   Thumb Code    46  com4004.o(i.dela_alarm)
-    delay_1us                                0x08007c45   Thumb Code   112  sensors.o(i.delay_1us)
-    delay_init                               0x08007cb5   Thumb Code    50  delay.o(i.delay_init)
-    deleteNodeFromUartTxSLHead               0x08007cf9   Thumb Code   100  list.o(i.deleteNodeFromUartTxSLHead)
-    floor                                    0x08007d65   Thumb Code   204  floor.o(i.floor)
-    fputc                                    0x08007e41   Thumb Code    22  usart.o(i.fputc)
-    get_sspbuf                               0x08007e5d   Thumb Code   100  usart.o(i.get_sspbuf)
-    hex2ascii                                0x08007ec9   Thumb Code    30  com1010.o(i.hex2ascii)
-    init_tx_message                          0x08007ee9   Thumb Code   110  com4004.o(i.init_tx_message)
-    main                                     0x08007f61   Thumb Code    94  main.o(i.main)
-    mem_free                                 0x08007fcd   Thumb Code    66  malloc.o(i.mem_free)
-    mem_init                                 0x08008015   Thumb Code    38  malloc.o(i.mem_init)
-    mem_malloc                               0x08008041   Thumb Code   116  malloc.o(i.mem_malloc)
-    mem_perused                              0x080080b9   Thumb Code    36  malloc.o(i.mem_perused)
-    myfree                                   0x080080e1   Thumb Code    24  malloc.o(i.myfree)
-    mymalloc                                 0x080080fd   Thumb Code    26  malloc.o(i.mymalloc)
-    mymemcpy                                 0x0800811d   Thumb Code    26  malloc.o(i.mymemcpy)
-    mymemset                                 0x08008137   Thumb Code    20  malloc.o(i.mymemset)
-    pow                                      0x08008865   Thumb Code  2510  pow.o(i.pow)
-    random                                   0x08009921   Thumb Code    38  com4004.o(i.random)
-    rev_action_perform                       0x08009949   Thumb Code  2018  com4004.o(i.rev_action_perform)
-    rev_analyze                              0x0800a141   Thumb Code   862  com4004.o(i.rev_analyze)
-    rev_anaylze                              0x0800a5cd   Thumb Code  2684  com1010.o(i.rev_anaylze)
-    rev_deal                                 0x0800b065   Thumb Code   300  com1010.o(i.rev_deal)
-    rev_device_status                        0x0800b1a5   Thumb Code   702  com4004.o(i.rev_device_status)
-    rev_heart_beat                           0x0800b48d   Thumb Code    24  com4004.o(i.rev_heart_beat)
-    rev_qe                                   0x0800b4a5   Thumb Code  2888  com4004.o(i.rev_qe)
-    send_action_message                      0x0800c001   Thumb Code   108  com1010.o(i.send_action_message)
-    send_data_sync                           0x0800c06d   Thumb Code   874  com4004.o(i.send_data_sync)
-    send_deepin_data_sync                    0x0800c439   Thumb Code  1336  com4004.o(i.send_deepin_data_sync)
-    send_device_info_sub                     0x0800c989   Thumb Code  2226  com4004.o(i.send_device_info_sub)
-    send_message                             0x0800d241   Thumb Code   196  com4004.o(i.send_message)
-    send_message_without_payload             0x0800d305   Thumb Code    60  com4004.o(i.send_message_without_payload)
-    sensors_init_all                         0x0800d341   Thumb Code    70  sensors.o(i.sensors_init_all)
-    sicp_alert_cmd                           0x0800d3fd   Thumb Code   208  com1010.o(i.sicp_alert_cmd)
-    sicp_ble_cmd                             0x0800d4dd   Thumb Code   122  com1010.o(i.sicp_ble_cmd)
-    sicp_broadcast                           0x0800d55d   Thumb Code    70  com1010.o(i.sicp_broadcast)
-    sicp_cmd_data                            0x0800d5a9   Thumb Code   140  com1010.o(i.sicp_cmd_data)
-    sicp_cmd_refresh                         0x0800d63d   Thumb Code   230  com1010.o(i.sicp_cmd_refresh)
-    sicp_config_cmd                          0x0800d72d   Thumb Code   760  com1010.o(i.sicp_config_cmd)
-    sicp_led_cmd                             0x0800da35   Thumb Code  1110  com1010.o(i.sicp_led_cmd)
-    sicp_qe_action_cmd                       0x0800de91   Thumb Code   544  com1010.o(i.sicp_qe_action_cmd)
-    sicp_receipt                             0x0800e0c5   Thumb Code    60  com1010.o(i.sicp_receipt)
-    sicp_send_heartbeart                     0x0800e101   Thumb Code   542  com1010.o(i.sicp_send_heartbeart)
-    sicp_send_message                        0x0800e32d   Thumb Code    88  com1010.o(i.sicp_send_message)
-    smokeModule_check                        0x0800e3a1   Thumb Code    26  sensors_gpio.o(i.smokeModule_check)
-    sqrt                                     0x0800e3c5   Thumb Code    76  sqrt.o(i.sqrt)
-    ssp_parse                                0x0800e411   Thumb Code   296  com4004.o(i.ssp_parse)
-    success_receipt                          0x0800e545   Thumb Code   104  com4004.o(i.success_receipt)
-    system_init                              0x0800e601   Thumb Code   178  main.o(i.system_init)
-    test_gpio_config                         0x0800e6c1   Thumb Code    46  main.o(i.test_gpio_config)
-    test_gpio_pwm                            0x0800e6f5   Thumb Code    40  main.o(i.test_gpio_pwm)
-    uart1_init                               0x0800e725   Thumb Code   262  usart.o(i.uart1_init)
-    uart2_init                               0x0800e83d   Thumb Code   162  usart.o(i.uart2_init)
-    __mathlib_zero                           0x0800e978   Data           8  qnan.o(.constdata)
-    Region$$Table$$Base                      0x0800e980   Number         0  anon$$obj.o(Region$$Table)
-    Region$$Table$$Limit                     0x0800e9a0   Number         0  anon$$obj.o(Region$$Table)
+    calc_send_r_length                       0x08003df9   Thumb Code   194  com4004.o(i.calc_send_r_length)
+    clear_sicp_buf                           0x08003ebd   Thumb Code    20  com1010.o(i.clear_sicp_buf)
+    clear_tx_buf                             0x08003ed5   Thumb Code    94  com4004.o(i.clear_tx_buf)
+    deal_action_backlight                    0x08003f3d   Thumb Code   314  com4004.o(i.deal_action_backlight)
+    deal_action_perform                      0x080040d1   Thumb Code  1334  com4004.o(i.deal_action_perform)
+    deal_action_refresh                      0x08004611   Thumb Code   104  com4004.o(i.deal_action_refresh)
+    deal_config_mesh                         0x08004681   Thumb Code   376  com4004.o(i.deal_config_mesh)
+    deal_config_ss                           0x08004801   Thumb Code   672  com4004.o(i.deal_config_ss)
+    deal_config_st                           0x08004b79   Thumb Code   478  com4004.o(i.deal_config_st)
+    deal_config_stragy_hpst                  0x08004da1   Thumb Code  2152  com4004.o(i.deal_config_stragy_hpst)
+    deal_config_strategy_htsp                0x08005609   Thumb Code  2306  com4004.o(i.deal_config_strategy_htsp)
+    deal_data_sync                           0x08005f15   Thumb Code    40  com4004.o(i.deal_data_sync)
+    deal_deepsyn_config_ss                   0x08005f41   Thumb Code   732  com4004.o(i.deal_deepsyn_config_ss)
+    deal_device_info                         0x080062e1   Thumb Code  2180  com1010.o(i.deal_device_info)
+    deal_device_list                         0x08006b6d   Thumb Code   908  com4004.o(i.deal_device_list)
+    deal_device_status                       0x08006f29   Thumb Code  1652  com4004.o(i.deal_device_status)
+    deal_mal_cmd                             0x080075b1   Thumb Code   354  com1010.o(i.deal_mal_cmd)
+    deal_qe                                  0x08007725   Thumb Code   504  com4004.o(i.deal_qe)
+    deal_rev_status                          0x08007921   Thumb Code   504  com1010.o(i.deal_rev_status)
+    deal_sc_data_cmd                         0x08007b29   Thumb Code   236  com1010.o(i.deal_sc_data_cmd)
+    dela_alarm                               0x08007c1d   Thumb Code    46  com4004.o(i.dela_alarm)
+    delay_1us                                0x08007c51   Thumb Code   112  sensors.o(i.delay_1us)
+    delay_init                               0x08007cc1   Thumb Code    50  delay.o(i.delay_init)
+    deleteNodeFromUartTxSLHead               0x08007d05   Thumb Code   100  list.o(i.deleteNodeFromUartTxSLHead)
+    floor                                    0x08007d71   Thumb Code   204  floor.o(i.floor)
+    fputc                                    0x08007e4d   Thumb Code    22  usart.o(i.fputc)
+    get_sspbuf                               0x08007e69   Thumb Code   100  usart.o(i.get_sspbuf)
+    hex2ascii                                0x08007ed5   Thumb Code    30  com1010.o(i.hex2ascii)
+    init_tx_message                          0x08007ef5   Thumb Code   110  com4004.o(i.init_tx_message)
+    main                                     0x08007f6d   Thumb Code    94  main.o(i.main)
+    mem_free                                 0x08007fd9   Thumb Code    66  malloc.o(i.mem_free)
+    mem_init                                 0x08008021   Thumb Code    38  malloc.o(i.mem_init)
+    mem_malloc                               0x0800804d   Thumb Code   116  malloc.o(i.mem_malloc)
+    mem_perused                              0x080080c5   Thumb Code    36  malloc.o(i.mem_perused)
+    myfree                                   0x080080ed   Thumb Code    24  malloc.o(i.myfree)
+    mymalloc                                 0x08008109   Thumb Code    26  malloc.o(i.mymalloc)
+    mymemcpy                                 0x08008129   Thumb Code    26  malloc.o(i.mymemcpy)
+    mymemset                                 0x08008143   Thumb Code    20  malloc.o(i.mymemset)
+    pow                                      0x08008871   Thumb Code  2510  pow.o(i.pow)
+    random                                   0x0800992d   Thumb Code    38  com4004.o(i.random)
+    rev_action_perform                       0x08009955   Thumb Code  2018  com4004.o(i.rev_action_perform)
+    rev_analyze                              0x0800a14d   Thumb Code   862  com4004.o(i.rev_analyze)
+    rev_anaylze                              0x0800a5d9   Thumb Code  2684  com1010.o(i.rev_anaylze)
+    rev_deal                                 0x0800b071   Thumb Code   300  com1010.o(i.rev_deal)
+    rev_device_status                        0x0800b1b1   Thumb Code   702  com4004.o(i.rev_device_status)
+    rev_heart_beat                           0x0800b499   Thumb Code    24  com4004.o(i.rev_heart_beat)
+    rev_qe                                   0x0800b4b1   Thumb Code  2888  com4004.o(i.rev_qe)
+    send_action_message                      0x0800c00d   Thumb Code   108  com1010.o(i.send_action_message)
+    send_data_sync                           0x0800c079   Thumb Code   874  com4004.o(i.send_data_sync)
+    send_deepin_data_sync                    0x0800c445   Thumb Code  1336  com4004.o(i.send_deepin_data_sync)
+    send_device_info_sub                     0x0800c995   Thumb Code  2226  com4004.o(i.send_device_info_sub)
+    send_message                             0x0800d24d   Thumb Code   200  com4004.o(i.send_message)
+    send_message_without_payload             0x0800d315   Thumb Code    60  com4004.o(i.send_message_without_payload)
+    sensors_init_all                         0x0800d351   Thumb Code    70  sensors.o(i.sensors_init_all)
+    sicp_alert_cmd                           0x0800d40d   Thumb Code   208  com1010.o(i.sicp_alert_cmd)
+    sicp_ble_cmd                             0x0800d4ed   Thumb Code   122  com1010.o(i.sicp_ble_cmd)
+    sicp_broadcast                           0x0800d56d   Thumb Code    70  com1010.o(i.sicp_broadcast)
+    sicp_cmd_data                            0x0800d5b9   Thumb Code   140  com1010.o(i.sicp_cmd_data)
+    sicp_cmd_refresh                         0x0800d64d   Thumb Code   230  com1010.o(i.sicp_cmd_refresh)
+    sicp_config_cmd                          0x0800d73d   Thumb Code   760  com1010.o(i.sicp_config_cmd)
+    sicp_led_cmd                             0x0800da45   Thumb Code  1110  com1010.o(i.sicp_led_cmd)
+    sicp_qe_action_cmd                       0x0800dea1   Thumb Code   544  com1010.o(i.sicp_qe_action_cmd)
+    sicp_receipt                             0x0800e0d5   Thumb Code    60  com1010.o(i.sicp_receipt)
+    sicp_send_heartbeart                     0x0800e111   Thumb Code   542  com1010.o(i.sicp_send_heartbeart)
+    sicp_send_message                        0x0800e33d   Thumb Code    88  com1010.o(i.sicp_send_message)
+    smokeModule_check                        0x0800e3b1   Thumb Code    26  sensors_gpio.o(i.smokeModule_check)
+    sqrt                                     0x0800e3d5   Thumb Code    76  sqrt.o(i.sqrt)
+    ssp_parse                                0x0800e421   Thumb Code   290  com4004.o(i.ssp_parse)
+    success_receipt                          0x0800e54d   Thumb Code   104  com4004.o(i.success_receipt)
+    system_init                              0x0800e609   Thumb Code   178  main.o(i.system_init)
+    test_gpio_config                         0x0800e6c9   Thumb Code    46  main.o(i.test_gpio_config)
+    test_gpio_pwm                            0x0800e6fd   Thumb Code    40  main.o(i.test_gpio_pwm)
+    uart1_init                               0x0800e72d   Thumb Code   262  usart.o(i.uart1_init)
+    uart2_init                               0x0800e845   Thumb Code   162  usart.o(i.uart2_init)
+    __mathlib_zero                           0x0800e980   Data           8  qnan.o(.constdata)
+    Region$$Table$$Base                      0x0800e988   Number         0  anon$$obj.o(Region$$Table)
+    Region$$Table$$Limit                     0x0800e9a8   Number         0  anon$$obj.o(Region$$Table)
     __stdout                                 0x20000008   Data           4  usart.o(.data)
     mallco_dev                               0x20000018   Data          20  malloc.o(.data)
     Usart1_Rec_Cnt                           0x2000002c   Data           2  com4004.o(.data)
@@ -2848,9 +2848,9 @@ Memory Map of the image
 
   Image Entry point : 0x08000131
 
-  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x0000ea6c, Max: 0x00080000, ABSOLUTE)
+  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x0000ea74, Max: 0x00080000, ABSOLUTE)
 
-    Execution Region ER_IROM1 (Base: 0x08000000, Size: 0x0000e9a0, Max: 0x00080000, ABSOLUTE)
+    Execution Region ER_IROM1 (Base: 0x08000000, Size: 0x0000e9a8, Max: 0x00080000, ABSOLUTE)
 
     Base Addr    Size         Type   Attr      Idx    E Section Name        Object
 
@@ -3083,104 +3083,105 @@ Memory Map of the image
     0x08003d70   0x00000010   Code   RO          443    i.cJSON_PrintUnformatted  cjson.o
     0x08003d80   0x0000004c   Code   RO          446    i.cJSON_strcasecmp  cjson.o
     0x08003dcc   0x0000002c   Code   RO          447    i.cJSON_strdup      cjson.o
-    0x08003df8   0x000000b8   Code   RO          825    i.calc_send_r_length  com4004.o
-    0x08003eb0   0x00000018   Code   RO         1094    i.clear_sicp_buf    com1010.o
-    0x08003ec8   0x00000068   Code   RO          826    i.clear_tx_buf      com4004.o
-    0x08003f30   0x00000194   Code   RO          827    i.deal_action_backlight  com4004.o
-    0x080040c4   0x00000540   Code   RO          828    i.deal_action_perform  com4004.o
-    0x08004604   0x00000070   Code   RO          829    i.deal_action_refresh  com4004.o
-    0x08004674   0x00000180   Code   RO          830    i.deal_config_mesh  com4004.o
-    0x080047f4   0x00000378   Code   RO          831    i.deal_config_ss    com4004.o
-    0x08004b6c   0x00000228   Code   RO          832    i.deal_config_st    com4004.o
-    0x08004d94   0x00000868   Code   RO          833    i.deal_config_stragy_hpst  com4004.o
-    0x080055fc   0x0000090c   Code   RO          834    i.deal_config_strategy_htsp  com4004.o
-    0x08005f08   0x0000002c   Code   RO          835    i.deal_data_sync    com4004.o
-    0x08005f34   0x000003a0   Code   RO          836    i.deal_deepsyn_config_ss  com4004.o
-    0x080062d4   0x0000088c   Code   RO         1095    i.deal_device_info  com1010.o
-    0x08006b60   0x000003bc   Code   RO          837    i.deal_device_list  com4004.o
-    0x08006f1c   0x00000688   Code   RO          838    i.deal_device_status  com4004.o
-    0x080075a4   0x00000174   Code   RO         1096    i.deal_mal_cmd      com1010.o
-    0x08007718   0x000001fc   Code   RO          839    i.deal_qe           com4004.o
-    0x08007914   0x00000208   Code   RO         1097    i.deal_rev_status   com1010.o
-    0x08007b1c   0x000000f4   Code   RO         1098    i.deal_sc_data_cmd  com1010.o
-    0x08007c10   0x00000034   Code   RO          840    i.dela_alarm        com4004.o
-    0x08007c44   0x00000070   Code   RO         1300    i.delay_1us         sensors.o
-    0x08007cb4   0x00000044   Code   RO            1    i.delay_init        delay.o
-    0x08007cf8   0x0000006c   Code   RO         1254    i.deleteNodeFromUartTxSLHead  list.o
-    0x08007d64   0x000000dc   Code   RO         4916    i.floor             m_ws.l(floor.o)
-    0x08007e40   0x0000001c   Code   RO          330    i.fputc             usart.o
-    0x08007e5c   0x0000006c   Code   RO          331    i.get_sspbuf        usart.o
-    0x08007ec8   0x0000001e   Code   RO         1100    i.hex2ascii         com1010.o
-    0x08007ee6   0x00000002   PAD
-    0x08007ee8   0x00000078   Code   RO          843    i.init_tx_message   com4004.o
-    0x08007f60   0x0000006c   Code   RO          163    i.main              main.o
-    0x08007fcc   0x00000048   Code   RO          743    i.mem_free          malloc.o
-    0x08008014   0x0000002c   Code   RO          744    i.mem_init          malloc.o
-    0x08008040   0x00000078   Code   RO          745    i.mem_malloc        malloc.o
-    0x080080b8   0x00000028   Code   RO          746    i.mem_perused       malloc.o
-    0x080080e0   0x0000001c   Code   RO          747    i.myfree            malloc.o
-    0x080080fc   0x00000020   Code   RO          748    i.mymalloc          malloc.o
-    0x0800811c   0x0000001a   Code   RO          749    i.mymemcpy          malloc.o
-    0x08008136   0x00000014   Code   RO          750    i.mymemset          malloc.o
-    0x0800814a   0x00000002   PAD
-    0x0800814c   0x000000ac   Code   RO          449    i.parse_array       cjson.o
-    0x080081f8   0x00000114   Code   RO          450    i.parse_hex4        cjson.o
-    0x0800830c   0x000001bc   Code   RO          451    i.parse_number      cjson.o
-    0x080084c8   0x00000114   Code   RO          452    i.parse_object      cjson.o
-    0x080085dc   0x000001cc   Code   RO          453    i.parse_string      cjson.o
-    0x080087a8   0x000000bc   Code   RO          454    i.parse_value       cjson.o
-    0x08008864   0x000009e0   Code   RO         4920    i.pow               m_ws.l(pow.o)
-    0x08009244   0x0000016c   Code   RO          455    i.print_array       cjson.o
-    0x080093b0   0x00000134   Code   RO          456    i.print_number      cjson.o
-    0x080094e4   0x00000274   Code   RO          457    i.print_object      cjson.o
-    0x08009758   0x0000000c   Code   RO          458    i.print_string      cjson.o
-    0x08009764   0x00000128   Code   RO          459    i.print_string_ptr  cjson.o
-    0x0800988c   0x00000094   Code   RO          460    i.print_value       cjson.o
-    0x08009920   0x00000026   Code   RO          846    i.random            com4004.o
-    0x08009946   0x00000002   PAD
-    0x08009948   0x000007f8   Code   RO          847    i.rev_action_perform  com4004.o
-    0x0800a140   0x0000048c   Code   RO          848    i.rev_analyze       com4004.o
-    0x0800a5cc   0x00000a98   Code   RO         1101    i.rev_anaylze       com1010.o
-    0x0800b064   0x00000140   Code   RO         1102    i.rev_deal          com1010.o
-    0x0800b1a4   0x000002e8   Code   RO          849    i.rev_device_status  com4004.o
-    0x0800b48c   0x00000018   Code   RO          850    i.rev_heart_beat    com4004.o
-    0x0800b4a4   0x00000b5c   Code   RO          851    i.rev_qe            com4004.o
-    0x0800c000   0x0000006c   Code   RO         1103    i.send_action_message  com1010.o
-    0x0800c06c   0x000003cc   Code   RO          853    i.send_data_sync    com4004.o
-    0x0800c438   0x00000550   Code   RO          854    i.send_deepin_data_sync  com4004.o
-    0x0800c988   0x000008b8   Code   RO          855    i.send_device_info_sub  com4004.o
-    0x0800d240   0x000000c4   Code   RO          857    i.send_message      com4004.o
-    0x0800d304   0x0000003c   Code   RO          858    i.send_message_without_payload  com4004.o
-    0x0800d340   0x000000bc   Code   RO         1301    i.sensors_init_all  sensors.o
-    0x0800d3fc   0x000000e0   Code   RO         1105    i.sicp_alert_cmd    com1010.o
-    0x0800d4dc   0x00000080   Code   RO         1106    i.sicp_ble_cmd      com1010.o
-    0x0800d55c   0x0000004c   Code   RO         1107    i.sicp_broadcast    com1010.o
-    0x0800d5a8   0x00000094   Code   RO         1108    i.sicp_cmd_data     com1010.o
-    0x0800d63c   0x000000f0   Code   RO         1109    i.sicp_cmd_refresh  com1010.o
-    0x0800d72c   0x00000308   Code   RO         1110    i.sicp_config_cmd   com1010.o
-    0x0800da34   0x0000045c   Code   RO         1111    i.sicp_led_cmd      com1010.o
-    0x0800de90   0x00000234   Code   RO         1112    i.sicp_qe_action_cmd  com1010.o
-    0x0800e0c4   0x0000003c   Code   RO         1113    i.sicp_receipt      com1010.o
-    0x0800e100   0x0000022c   Code   RO         1114    i.sicp_send_heartbeart  com1010.o
-    0x0800e32c   0x00000060   Code   RO         1115    i.sicp_send_message  com1010.o
-    0x0800e38c   0x00000012   Code   RO          461    i.skip              cjson.o
-    0x0800e39e   0x00000002   PAD
-    0x0800e3a0   0x00000024   Code   RO         1390    i.smokeModule_check  sensors_gpio.o
-    0x0800e3c4   0x0000004c   Code   RO         5278    i.sqrt              m_ws.l(sqrt.o)
-    0x0800e410   0x00000134   Code   RO          860    i.ssp_parse         com4004.o
-    0x0800e544   0x000000b4   Code   RO          861    i.success_receipt   com4004.o
-    0x0800e5f8   0x00000006   Code   RO          462    i.suffix_object     cjson.o
-    0x0800e5fe   0x00000002   PAD
-    0x0800e600   0x000000c0   Code   RO          164    i.system_init       main.o
-    0x0800e6c0   0x00000034   Code   RO          165    i.test_gpio_config  main.o
-    0x0800e6f4   0x00000030   Code   RO          166    i.test_gpio_pwm     main.o
-    0x0800e724   0x00000118   Code   RO          332    i.uart1_init        usart.o
-    0x0800e83c   0x000000ac   Code   RO          333    i.uart2_init        usart.o
-    0x0800e8e8   0x00000007   Data   RO          463    .constdata          cjson.o
-    0x0800e8ef   0x00000001   PAD
-    0x0800e8f0   0x00000088   Data   RO         4921    .constdata          m_ws.l(pow.o)
-    0x0800e978   0x00000008   Data   RO         5276    .constdata          m_ws.l(qnan.o)
-    0x0800e980   0x00000020   Data   RO         5331    Region$$Table       anon$$obj.o
+    0x08003df8   0x000000c2   Code   RO          825    i.calc_send_r_length  com4004.o
+    0x08003eba   0x00000002   PAD
+    0x08003ebc   0x00000018   Code   RO         1094    i.clear_sicp_buf    com1010.o
+    0x08003ed4   0x00000068   Code   RO          826    i.clear_tx_buf      com4004.o
+    0x08003f3c   0x00000194   Code   RO          827    i.deal_action_backlight  com4004.o
+    0x080040d0   0x00000540   Code   RO          828    i.deal_action_perform  com4004.o
+    0x08004610   0x00000070   Code   RO          829    i.deal_action_refresh  com4004.o
+    0x08004680   0x00000180   Code   RO          830    i.deal_config_mesh  com4004.o
+    0x08004800   0x00000378   Code   RO          831    i.deal_config_ss    com4004.o
+    0x08004b78   0x00000228   Code   RO          832    i.deal_config_st    com4004.o
+    0x08004da0   0x00000868   Code   RO          833    i.deal_config_stragy_hpst  com4004.o
+    0x08005608   0x0000090c   Code   RO          834    i.deal_config_strategy_htsp  com4004.o
+    0x08005f14   0x0000002c   Code   RO          835    i.deal_data_sync    com4004.o
+    0x08005f40   0x000003a0   Code   RO          836    i.deal_deepsyn_config_ss  com4004.o
+    0x080062e0   0x0000088c   Code   RO         1095    i.deal_device_info  com1010.o
+    0x08006b6c   0x000003bc   Code   RO          837    i.deal_device_list  com4004.o
+    0x08006f28   0x00000688   Code   RO          838    i.deal_device_status  com4004.o
+    0x080075b0   0x00000174   Code   RO         1096    i.deal_mal_cmd      com1010.o
+    0x08007724   0x000001fc   Code   RO          839    i.deal_qe           com4004.o
+    0x08007920   0x00000208   Code   RO         1097    i.deal_rev_status   com1010.o
+    0x08007b28   0x000000f4   Code   RO         1098    i.deal_sc_data_cmd  com1010.o
+    0x08007c1c   0x00000034   Code   RO          840    i.dela_alarm        com4004.o
+    0x08007c50   0x00000070   Code   RO         1300    i.delay_1us         sensors.o
+    0x08007cc0   0x00000044   Code   RO            1    i.delay_init        delay.o
+    0x08007d04   0x0000006c   Code   RO         1254    i.deleteNodeFromUartTxSLHead  list.o
+    0x08007d70   0x000000dc   Code   RO         4916    i.floor             m_ws.l(floor.o)
+    0x08007e4c   0x0000001c   Code   RO          330    i.fputc             usart.o
+    0x08007e68   0x0000006c   Code   RO          331    i.get_sspbuf        usart.o
+    0x08007ed4   0x0000001e   Code   RO         1100    i.hex2ascii         com1010.o
+    0x08007ef2   0x00000002   PAD
+    0x08007ef4   0x00000078   Code   RO          843    i.init_tx_message   com4004.o
+    0x08007f6c   0x0000006c   Code   RO          163    i.main              main.o
+    0x08007fd8   0x00000048   Code   RO          743    i.mem_free          malloc.o
+    0x08008020   0x0000002c   Code   RO          744    i.mem_init          malloc.o
+    0x0800804c   0x00000078   Code   RO          745    i.mem_malloc        malloc.o
+    0x080080c4   0x00000028   Code   RO          746    i.mem_perused       malloc.o
+    0x080080ec   0x0000001c   Code   RO          747    i.myfree            malloc.o
+    0x08008108   0x00000020   Code   RO          748    i.mymalloc          malloc.o
+    0x08008128   0x0000001a   Code   RO          749    i.mymemcpy          malloc.o
+    0x08008142   0x00000014   Code   RO          750    i.mymemset          malloc.o
+    0x08008156   0x00000002   PAD
+    0x08008158   0x000000ac   Code   RO          449    i.parse_array       cjson.o
+    0x08008204   0x00000114   Code   RO          450    i.parse_hex4        cjson.o
+    0x08008318   0x000001bc   Code   RO          451    i.parse_number      cjson.o
+    0x080084d4   0x00000114   Code   RO          452    i.parse_object      cjson.o
+    0x080085e8   0x000001cc   Code   RO          453    i.parse_string      cjson.o
+    0x080087b4   0x000000bc   Code   RO          454    i.parse_value       cjson.o
+    0x08008870   0x000009e0   Code   RO         4920    i.pow               m_ws.l(pow.o)
+    0x08009250   0x0000016c   Code   RO          455    i.print_array       cjson.o
+    0x080093bc   0x00000134   Code   RO          456    i.print_number      cjson.o
+    0x080094f0   0x00000274   Code   RO          457    i.print_object      cjson.o
+    0x08009764   0x0000000c   Code   RO          458    i.print_string      cjson.o
+    0x08009770   0x00000128   Code   RO          459    i.print_string_ptr  cjson.o
+    0x08009898   0x00000094   Code   RO          460    i.print_value       cjson.o
+    0x0800992c   0x00000026   Code   RO          846    i.random            com4004.o
+    0x08009952   0x00000002   PAD
+    0x08009954   0x000007f8   Code   RO          847    i.rev_action_perform  com4004.o
+    0x0800a14c   0x0000048c   Code   RO          848    i.rev_analyze       com4004.o
+    0x0800a5d8   0x00000a98   Code   RO         1101    i.rev_anaylze       com1010.o
+    0x0800b070   0x00000140   Code   RO         1102    i.rev_deal          com1010.o
+    0x0800b1b0   0x000002e8   Code   RO          849    i.rev_device_status  com4004.o
+    0x0800b498   0x00000018   Code   RO          850    i.rev_heart_beat    com4004.o
+    0x0800b4b0   0x00000b5c   Code   RO          851    i.rev_qe            com4004.o
+    0x0800c00c   0x0000006c   Code   RO         1103    i.send_action_message  com1010.o
+    0x0800c078   0x000003cc   Code   RO          853    i.send_data_sync    com4004.o
+    0x0800c444   0x00000550   Code   RO          854    i.send_deepin_data_sync  com4004.o
+    0x0800c994   0x000008b8   Code   RO          855    i.send_device_info_sub  com4004.o
+    0x0800d24c   0x000000c8   Code   RO          857    i.send_message      com4004.o
+    0x0800d314   0x0000003c   Code   RO          858    i.send_message_without_payload  com4004.o
+    0x0800d350   0x000000bc   Code   RO         1301    i.sensors_init_all  sensors.o
+    0x0800d40c   0x000000e0   Code   RO         1105    i.sicp_alert_cmd    com1010.o
+    0x0800d4ec   0x00000080   Code   RO         1106    i.sicp_ble_cmd      com1010.o
+    0x0800d56c   0x0000004c   Code   RO         1107    i.sicp_broadcast    com1010.o
+    0x0800d5b8   0x00000094   Code   RO         1108    i.sicp_cmd_data     com1010.o
+    0x0800d64c   0x000000f0   Code   RO         1109    i.sicp_cmd_refresh  com1010.o
+    0x0800d73c   0x00000308   Code   RO         1110    i.sicp_config_cmd   com1010.o
+    0x0800da44   0x0000045c   Code   RO         1111    i.sicp_led_cmd      com1010.o
+    0x0800dea0   0x00000234   Code   RO         1112    i.sicp_qe_action_cmd  com1010.o
+    0x0800e0d4   0x0000003c   Code   RO         1113    i.sicp_receipt      com1010.o
+    0x0800e110   0x0000022c   Code   RO         1114    i.sicp_send_heartbeart  com1010.o
+    0x0800e33c   0x00000060   Code   RO         1115    i.sicp_send_message  com1010.o
+    0x0800e39c   0x00000012   Code   RO          461    i.skip              cjson.o
+    0x0800e3ae   0x00000002   PAD
+    0x0800e3b0   0x00000024   Code   RO         1390    i.smokeModule_check  sensors_gpio.o
+    0x0800e3d4   0x0000004c   Code   RO         5278    i.sqrt              m_ws.l(sqrt.o)
+    0x0800e420   0x0000012c   Code   RO          860    i.ssp_parse         com4004.o
+    0x0800e54c   0x000000b4   Code   RO          861    i.success_receipt   com4004.o
+    0x0800e600   0x00000006   Code   RO          462    i.suffix_object     cjson.o
+    0x0800e606   0x00000002   PAD
+    0x0800e608   0x000000c0   Code   RO          164    i.system_init       main.o
+    0x0800e6c8   0x00000034   Code   RO          165    i.test_gpio_config  main.o
+    0x0800e6fc   0x00000030   Code   RO          166    i.test_gpio_pwm     main.o
+    0x0800e72c   0x00000118   Code   RO          332    i.uart1_init        usart.o
+    0x0800e844   0x000000ac   Code   RO          333    i.uart2_init        usart.o
+    0x0800e8f0   0x00000007   Data   RO          463    .constdata          cjson.o
+    0x0800e8f7   0x00000001   PAD
+    0x0800e8f8   0x00000088   Data   RO         4921    .constdata          m_ws.l(pow.o)
+    0x0800e980   0x00000008   Data   RO         5276    .constdata          m_ws.l(qnan.o)
+    0x0800e988   0x00000020   Data   RO         5331    Region$$Table       anon$$obj.o
 
 
     Execution Region RW_IRAM1 (Base: 0x20000000, Size: 0x0000f048, Max: 0x00010000, ABSOLUTE)
@@ -3229,7 +3230,7 @@ Image component sizes
 
       4216        232          7         12          0      20754   cjson.o
      10582        338          0         24        487      17312   com1010.o
-     25070       2174          0         34      42220      35931   com4004.o
+     25076       2166          0         34      42220      35931   com4004.o
          0          0          0          0          0         32   core_cm3.o
         68         18          0          4          0     264949   delay.o
        132          4          0          0          0        439   led.o
@@ -3259,9 +3260,9 @@ Image component sizes
       1112        148          0          4          0       6284   usart.o
 
     ----------------------------------------------------------------------
-     51376       3842        344        196      61308     658877   Object Totals
+     51384       3834        344        196      61308     658877   Object Totals
          0          0         32          0          0          0   (incl. Generated)
-        40          0          1         10          7          0   (incl. Padding)
+        42          0          1         10          7          0   (incl. Padding)
 
     ----------------------------------------------------------------------
 
@@ -3342,15 +3343,15 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     59320       4186        488        204      61308     648653   Grand Totals
-     59320       4186        488        204      61308     648653   ELF Image Totals
-     59320       4186        488        204          0          0   ROM Totals
+     59328       4178        488        204      61308     648653   Grand Totals
+     59328       4178        488        204      61308     648653   ELF Image Totals
+     59328       4178        488        204          0          0   ROM Totals
 
 ==============================================================================
 
-    Total RO  Size (Code + RO Data)                59808 (  58.41kB)
+    Total RO  Size (Code + RO Data)                59816 (  58.41kB)
     Total RW  Size (RW Data + ZI Data)             61512 (  60.07kB)
-    Total ROM Size (Code + RO Data + RW Data)      60012 (  58.61kB)
+    Total ROM Size (Code + RO Data + RW Data)      60020 (  58.61kB)
 
 ==============================================================================
 

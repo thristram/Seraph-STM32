@@ -218,7 +218,7 @@ void rev_anaylze(void)
 					}
 				}
 				else if((rev_message_id >= 80) && (rev_message_id < 100)){//说明接收到的qe action的回复 ST
-					if(sicp_buf[7] == 0x05){//接收成功
+					if(sicp_buf[7] == 0x05){//执行成功
 						ss.st[rev_message_id-80].ch1_status = sicp_buf[8];
 						ss.st[rev_message_id-80].ch2_status = sicp_buf[9];
 						ss.st[rev_message_id-80].ch3_status = sicp_buf[10];
@@ -232,9 +232,12 @@ void rev_anaylze(void)
 						rev_action_fail_cnt++;
 						rev_action_done2 = 1;
 					}
+					else if(sicp_buf[7] == 0x02){//接收成功
+						
+					}
 				}
 				else if((rev_message_id >= 100) && (rev_message_id < 105)){//说明接收到的qe action的回复 SLC/SPC
-					if(sicp_buf[7] == 0x05){//接收成功
+					if(sicp_buf[7] == 0x05){//执行成功
 						for(i = 0; i < 15;i++){
 							if(ss.sc[rev_message_id-100].slc[i].MDID == sicp_buf[8]){
 								ss.sc[rev_message_id-100].slc[i].ch1_status = sicp_buf[9];
@@ -275,6 +278,9 @@ void rev_anaylze(void)
 								break;
 							}
 						}
+					}
+					else if(sicp_buf[7] == 0x03){//执行失败
+						
 					}
 				}
 				else if((rev_message_id >= 130) && (rev_message_id < 140)){//收到st alert cmd回复

@@ -89,7 +89,8 @@ u8 ssp_parse(u8 *buf,u16 buf_len)
 		else if((temp_buf[4] & 0x80) == 0x00)
 		{
 			remaining_len = 2;
-			useful_data_len = (temp_buf[3]& 0x7F)*128 + temp_buf[4];
+			//useful_data_len = (temp_buf[3]& 0x7F)*128 + temp_buf[4];
+			useful_data_len = (temp_buf[3]-0x80) + temp_buf[4]*128;
 			if(useful_data_len != buf_len - 5)//接收到的有效数据长度与实际收到的数据不等，错误，不接收本包数据
 			{
 				return 0;
@@ -98,7 +99,8 @@ u8 ssp_parse(u8 *buf,u16 buf_len)
 		else if((temp_buf[5] & 0x80) == 0x00)
 		{
 			remaining_len = 3;
-			useful_data_len = (temp_buf[3]& 0x7F)*16384 + (temp_buf[4]& 0x7F)*128 + temp_buf[5];
+			//useful_data_len = (temp_buf[3]& 0x7F)*16384 + (temp_buf[4]& 0x7F)*128 + temp_buf[5];
+			useful_data_len = (temp_buf[3]-0x80) + ((temp_buf[4]& 0x7F)*128) + temp_buf[5]*16384;
 			if(useful_data_len != buf_len - 6)//接收到的有效数据长度与实际收到的数据不等，错误，不接收本包数据
 			{
 				return 0;
@@ -107,7 +109,8 @@ u8 ssp_parse(u8 *buf,u16 buf_len)
 		else if((temp_buf[6] & 0x80) == 0x00)
 		{
 			remaining_len = 4;
-			useful_data_len = (temp_buf[3]& 0x7F)*2097126 + (temp_buf[4]& 0x7F)*16384 + (temp_buf[5]& 0x7F)*128 + temp_buf[6];
+			//useful_data_len = (temp_buf[3]& 0x7F)*2097126 + (temp_buf[4]& 0x7F)*16384 + (temp_buf[5]& 0x7F)*128 + temp_buf[6];
+			useful_data_len = (temp_buf[3]-0x80) + ((temp_buf[4]& 0x7F)*128) + ((temp_buf[5]&0x7F)*16384) + temp_buf[6]*2097152;
 			if(useful_data_len != buf_len - 7)//接收到的有效数据长度与实际收到的数据不等，错误，不接收本包数据
 			{
 				return 0;
@@ -1534,10 +1537,21 @@ void calc_send_r_length(u8 *buf,Txmessage *tx)
 	if(tx->tx_var_header.topic_lengthL){
 		padload_len += strlen(tx->tx_var_header.topic);
 	}
-	if ((padload_len / 2097126) > 0)//有4个字节长的r_length
+	if ((padload_len / 2097152) > 0)//有4个字节长的r_length
 	{	
 		tx->tx_fix_header.r_length_len = 4;
-		tx->tx_fix_header.r_length[3] = (u8)(padload_len / 2097126);
+		tx->tx_fix_header.r_length[0] = (u8)(padload_len % 2097152);
+		padload_len -= tx->tx_fix_header.r_length[0];
+		tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
+		padload_len -= tx->tx_fix_header.r_length[1];
+		tx->tx_fix_header.r_length[2] = (u8)(padload_len % 128);
+		padload_len -= tx->tx_fix_header.r_length[2];
+		tx->tx_fix_header.r_length[3] = (u8)(padload_len % 128);
+		tx->tx_fix_header.r_length[0] |= 0x80;
+		tx->tx_fix_header.r_length[1] |= 0x80;
+		tx->tx_fix_header.r_length[2] |= 0x80;
+		/*
+		tx->tx_fix_header.r_length[3] = (u8)(padload_len / 2097126) | 0x80;
 		padload_len = padload_len % 2097126;
 		if((padload_len / 16384) > 0)
 		{
@@ -1550,27 +1564,33 @@ void calc_send_r_length(u8 *buf,Txmessage *tx)
 				
 				tx->tx_fix_header.r_length[0] = (u8)padload_len;
 			}
-		}
+		}*/
 	}
 	else if((padload_len / 16384) > 0)//有3个字节的r_length
 	{
 			tx->tx_fix_header.r_length_len = 3;
-			tx->tx_fix_header.r_length[2] = (u8)(padload_len / 16384);
-			padload_len = padload_len % 16384;
+			tx->tx_fix_header.r_length[0] = (u8)(padload_len % 16384);
+			padload_len -= tx->tx_fix_header.r_length[0];
+			tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
+			padload_len -= tx->tx_fix_header.r_length[1];
+			tx->tx_fix_header.r_length[2] = (u8)(padload_len % 128);
+			tx->tx_fix_header.r_length[0] |= 0x80;
+			tx->tx_fix_header.r_length[1] |= 0x80;
+		
+			/*padload_len = padload_len / 128;
 			if ((padload_len / 128) > 0)
 			{
-				tx->tx_fix_header.r_length[1] = (u8)(padload_len / 128);
-				padload_len = (padload_len % 128);
-				tx->tx_fix_header.r_length[0] = (u8)padload_len;
-			}
+				tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128) | 0x80;
+				padload_len = (padload_len / 128);
+				tx->tx_fix_header.r_length[2] = (u8)padload_len;
+			}*/
 	}
 	else if((padload_len / 128) > 0)//有2个字节的r_length
 	{
 		tx->tx_fix_header.r_length_len = 2;
-		tx->tx_fix_header.r_length[1] = (u8)(padload_len / 128);
-		padload_len = (u8)padload_len % 128;
-		
-		tx->tx_fix_header.r_length[0] = (u8)padload_len;
+		tx->tx_fix_header.r_length[0] = (u8)(padload_len % 128) | 0x80;
+		padload_len = (u8)padload_len / 128;
+		tx->tx_fix_header.r_length[1] = (u8)padload_len ;
 	}
 	else
 	{
@@ -1645,7 +1665,9 @@ void send_message(Txmessage *tx)
 	send_buf = temp_send_buf;
 	temp_send_buf = send_buf;
 	*send_buf++ = 0xBB;
+	txlen++;
 	*send_buf++ = 0xBB;
+	txlen++;
 	*send_buf++ = (tx->tx_fix_header.ch.first_ch_byte);
 	txlen++;
 	while(tx->tx_fix_header.r_length_len--){
@@ -2262,7 +2284,9 @@ void rev_action_perform(void)
 }
 
 
-//回复qe，此函数放到Task100ms
+
+
+//回复qe执行结果，此函数放到Task100ms
 void rev_qe(void)
 {
 	u8 i,j;
