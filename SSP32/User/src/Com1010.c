@@ -232,9 +232,7 @@ void rev_anaylze(void)
 						rev_action_fail_cnt++;
 						rev_action_done2 = 1;
 					}
-					else if(sicp_buf[7] == 0x02){//接收成功
-						
-					}
+
 				}
 				else if((rev_message_id >= 100) && (rev_message_id < 105)){//说明接收到的qe action的回复 SLC/SPC
 					if(sicp_buf[7] == 0x05){//执行成功
@@ -279,9 +277,7 @@ void rev_anaylze(void)
 							}
 						}
 					}
-					else if(sicp_buf[7] == 0x03){//执行失败
-						
-					}
+					
 				}
 				else if((rev_message_id >= 130) && (rev_message_id < 140)){//收到st alert cmd回复
 					

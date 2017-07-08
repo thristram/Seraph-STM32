@@ -1540,16 +1540,16 @@ void calc_send_r_length(u8 *buf,Txmessage *tx)
 	if ((padload_len / 2097152) > 0)//有4个字节长的r_length
 	{	
 		tx->tx_fix_header.r_length_len = 4;
-		tx->tx_fix_header.r_length[0] = (u8)(padload_len % 2097152);
-		padload_len -= tx->tx_fix_header.r_length[0];
-		tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
-		padload_len -= tx->tx_fix_header.r_length[1];
+		tx->tx_fix_header.r_length[3] = (u8)(padload_len % 2097152);
+		padload_len -= tx->tx_fix_header.r_length[3];
 		tx->tx_fix_header.r_length[2] = (u8)(padload_len % 128);
 		padload_len -= tx->tx_fix_header.r_length[2];
-		tx->tx_fix_header.r_length[3] = (u8)(padload_len % 128);
-		tx->tx_fix_header.r_length[0] |= 0x80;
-		tx->tx_fix_header.r_length[1] |= 0x80;
+		tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
+		padload_len -= tx->tx_fix_header.r_length[1];
+		tx->tx_fix_header.r_length[0] = (u8)(padload_len % 128);
+		tx->tx_fix_header.r_length[3] |= 0x80;
 		tx->tx_fix_header.r_length[2] |= 0x80;
+		tx->tx_fix_header.r_length[1] |= 0x80;
 		/*
 		tx->tx_fix_header.r_length[3] = (u8)(padload_len / 2097126) | 0x80;
 		padload_len = padload_len % 2097126;
@@ -1569,12 +1569,12 @@ void calc_send_r_length(u8 *buf,Txmessage *tx)
 	else if((padload_len / 16384) > 0)//有3个字节的r_length
 	{
 			tx->tx_fix_header.r_length_len = 3;
-			tx->tx_fix_header.r_length[0] = (u8)(padload_len % 16384);
-			padload_len -= tx->tx_fix_header.r_length[0];
+			tx->tx_fix_header.r_length[2] = (u8)(padload_len % 16384);
+			padload_len -= tx->tx_fix_header.r_length[2];
 			tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
 			padload_len -= tx->tx_fix_header.r_length[1];
-			tx->tx_fix_header.r_length[2] = (u8)(padload_len % 128);
-			tx->tx_fix_header.r_length[0] |= 0x80;
+			tx->tx_fix_header.r_length[0] = (u8)(padload_len % 128);
+			tx->tx_fix_header.r_length[2] |= 0x80;
 			tx->tx_fix_header.r_length[1] |= 0x80;
 		
 			/*padload_len = padload_len / 128;
@@ -1588,9 +1588,9 @@ void calc_send_r_length(u8 *buf,Txmessage *tx)
 	else if((padload_len / 128) > 0)//有2个字节的r_length
 	{
 		tx->tx_fix_header.r_length_len = 2;
-		tx->tx_fix_header.r_length[0] = (u8)(padload_len % 128) | 0x80;
+		tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128) | 0x80;
 		padload_len = (u8)padload_len / 128;
-		tx->tx_fix_header.r_length[1] = (u8)padload_len ;
+		tx->tx_fix_header.r_length[0] = (u8)padload_len ;
 	}
 	else
 	{
