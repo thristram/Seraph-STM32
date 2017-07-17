@@ -2,6 +2,7 @@
 #include "sensors.h"
 
 u16 sys_time;//记录系统上电运行时间
+u8 tick400ms;
 
 void Task2ms(void);
 void Task100ms(void);
@@ -49,7 +50,15 @@ void system_init(void)
 			}
 		}
 	}
-	
+	ss.sc[0].meshid = 0x8010;
+	//ss.st[0].deviceid[0] = 'A';
+	//ss.st[0].deviceid[1] = 'A';
+	//ss.st[0].deviceid[2] = '5';
+	//ss.st[0].deviceid[3] = '5';
+	//ss.st[0].deviceid[4] = 'A';
+	//ss.st[0].deviceid[5] = 'B';
+	//ss.st[0].deviceid[6] = '7';
+	//ss.st[0].deviceid[7] = '0';
 	//ss.meshid = 0x8005;
 	//ss.sc[0].meshid = 0x8004;
 	/*ss.sc[0].deviceid[0] = 0x41;
@@ -135,13 +144,7 @@ void system_init(void)
 	static u8 flag = 0;
 	 if(flag)	{GPIO_SetBits(GPIOA, GPIO_Pin_4);flag = 0;}
 	 else			{GPIO_ResetBits(GPIOA, GPIO_Pin_4);flag = 1;}
-	
 
-
-
-
-
- 
  }
 
 
@@ -197,6 +200,14 @@ void Task100ms(void)
 	if(f_100ms)
 	{
 		f_100ms = 0;
+		if(tick400ms < 3)	tick400ms++;
+		else{
+			tick400ms = 0;
+			if(uart2TxSLHead){//链表头不为空
+				Usart2_Send(uart2TxSLHead->data,uart2TxSLHead->len); //uartTxSLHead->haswrite在中断中处理
+			}
+		}
+		
 		//init_send_Txmessage(CONTINUE);
 		/*******SICP************/
 		if(ack_ar)	{ack_ar = 0;sicp_cmd_refresh();success_receipt();}
@@ -209,7 +220,7 @@ void Task100ms(void)
 		rev_action_perform();
 		rev_qe();
 		rev_device_status();
-		if(ack_dl)	send_device_info_sub();//要等待esh发送device list得到sub设备的device id
+		if(ack_dl)	send_device_info_sub(0x01,0x00,0x00);//要等待esh发送device list得到sub设备的device id
 		if(rev_20 && send_dr_refresh_cmd_done){rev_20 = 0;send_dr_refresh_cmd_done = 0;send_data_sync(0x83);}
 		
 		CO2_usart3_send();
@@ -221,6 +232,7 @@ void Task300ms(void)
 	if(f_300ms)
 	{
 		f_300ms = 0;
+		
 		ADC1_value_filter();
 	}
 }

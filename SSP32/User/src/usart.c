@@ -281,6 +281,7 @@ void USART2_IRQHandler(void)
 		{
 			Usart2_Send_Cnt = 0;
 			Usart2_Send_Done = 1;
+			if(!mutex2)	deleteNodeFromUart2TxSLHead();//互斥量，uartRxSLHead和uartRxSLLast在addNodeToUartRxSLLast函数中未处理完就被清
 			USART_ITConfig(USART2, USART_IT_TXE, DISABLE);	//关闭发送中断
 		}
 	}

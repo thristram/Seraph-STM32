@@ -953,12 +953,16 @@ void deal_config_st(u8 *buf)
 	cJSON *root,*tmp,*level1,*level2;
 	int i,j,cmd_size;
 	int index = 0;
+	char deviceid[10];
 	root = cJSON_Parse((char*)buf);
 	ss_cst_count = 0;
 	if(root)
 	{
 		for(j = 0; j < 20;j++){//寻找要配置的st是否为本ss所管理的
-			level1 = cJSON_GetObjectItem(root,ss.st[j].deviceid);
+			deviceid[0] = 'S';
+			deviceid[1] = 'T';
+			mymemcpy((deviceid + 2),ss.st[j].deviceid,8);
+			level1 = cJSON_GetObjectItem(root,deviceid);
 			if(level1){//是本ss所管理的st
 				if(level1->type == cJSON_Array){
 					cmd_size = cJSON_GetArraySize(level1);
@@ -986,6 +990,7 @@ void deal_config_st(u8 *buf)
 										if(tmp && tmp->valuestring)	mymemcpy(ss_cst[index].action,tmp->valuestring,2);
 										tmp = cJSON_GetObjectItem(level2,"value");
 										if(tmp)	ss_cst[index].value = tmp->valueint;
+										else		ss_cst[index].value = 0;
 										index++;
 									}
 								}
@@ -1544,7 +1549,7 @@ void calc_send_r_length(u8 *buf,Txmessage *tx)
 		padload_len += 3;
 	}
 	if(tx->tx_var_header.topic_lengthL){
-		padload_len += strlen(tx->tx_var_header.topic);
+		padload_len += strlen(tx->tx_var_header.topic) + 2;//2是topic length的长度
 	}
 	if ((padload_len / 2097152) > 0)//有4个字节长的r_length
 	{	
@@ -1686,6 +1691,10 @@ void send_message(Txmessage *tx)
 	*send_buf++ = tx->tx_var_header.version;
 	txlen++;
 	if(tx->tx_var_header.topic_lengthL){
+		*send_buf++ = tx->tx_var_header.topic_lengthH;
+		txlen++;
+		*send_buf++ = tx->tx_var_header.topic_lengthL;
+		txlen++;
 		mymemcpy(send_buf,tx->tx_var_header.topic,tx->tx_var_header.topic_lengthL);
 		txlen += tx->tx_var_header.topic_lengthL;
 		send_buf += tx->tx_var_header.topic_lengthL;
@@ -1926,7 +1935,11 @@ void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L)
 	cJSON *cs;
 	int i,j;
 	char *payload;
-	char *topic = "";
+	char *topic;
+	char topic1[] = "/device/info/ss";
+	char topic2[] = "";
+	if(type == 0x01) topic = topic1;
+	else						 topic = topic2;
 	//if(ready_ss_post)
 	//{
 		//ready_ss_post = 0;
@@ -1934,12 +1947,12 @@ void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L)
 		cJSON_AddStringToObject(cs,"deviceID",ss.deviceid);
 		cJSON_AddStringToObject(cs,"model",ss.model);
 		cJSON_AddStringToObject(cs,"firmware",ss.firmware);
-		cJSON_AddNumberToObject(cs,"HWTtest",ss.HWTtest);
+		cJSON_AddNumberToObject(cs,"HWtest",ss.HWTtest);
 		cJSON_AddNumberToObject(cs,"meshID",ss.meshid);
 		cJSON_AddStringToObject(cs,"macWiFi",ss.macwifi);
 		payload = cJSON_PrintUnformatted(cs);
 		if(payload)	cJSON_Delete(cs);
-		if(type == 0x01)	init_tx_message(0x43,0x01,0x00,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+		if(type == 0x01)	init_tx_message(0x43,0x01,0x0F,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
 		else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
 		send_message(&Txto4004);
 	//}
@@ -1948,19 +1961,18 @@ void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L)
 
 //上电收到ST/SC/SLC/SPC后转发给eSH，上电推送自身数据
 //uart2接收到ST/SC/SLC/SPC自身数据后，存储在ss.sc[]/ss.st[]/ss.slc[]/ss.spc中
-void send_device_info_sub(void)
+void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
 {
 	u8 temp_counter,gene_message_id_H,gene_message_id_L;
 	cJSON *cs;
 	int i,j;
 	char *payload;
-	char *topic = "";
+	char *topic;
+	char topic1[] = "/device/info/sub";
+	char topic2[] = "";
 	u8 tmp_deviceid[10];
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_H = random(temp_counter);
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_L = random(temp_counter);
-	
+	if(type == 0x01) topic = topic1;
+	else						 topic = topic2;
 	
 	if(ready_st_post){
 		ready_st_post = 0;
@@ -1974,12 +1986,13 @@ void send_device_info_sub(void)
 				cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 				cJSON_AddStringToObject(cs,"model",ss.st[i].model);
 				cJSON_AddStringToObject(cs,"firmware",ss.st[i].firmware);
-				cJSON_AddNumberToObject(cs,"HWTtest",ss.st[i].HWTtest);
+				cJSON_AddNumberToObject(cs,"HWtest",ss.st[i].HWTtest);
 				cJSON_AddNumberToObject(cs,"meshID",ss.st[i].meshid);
 				cJSON_AddStringToObject(cs,"macWiFi",ss.st[i].macwifi);
 				payload = cJSON_PrintUnformatted(cs);
 				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x43,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+				if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+				else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
 				send_message(&Txto4004);
 			}
 		}
@@ -1997,13 +2010,14 @@ void send_device_info_sub(void)
 				cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 				cJSON_AddStringToObject(cs,"model",ss.sc[i].model);
 				cJSON_AddStringToObject(cs,"firmware",ss.sc[i].firmware);
-				cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].HWTtest);
+				cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].HWTtest);
 				cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
 				cJSON_AddNumberToObject(cs,"Ndevice",ss.sc[i].Ndevice);
 				cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].macwifi);
 				payload = cJSON_PrintUnformatted(cs);
 				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x43,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+				if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+				else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
 				send_message(&Txto4004);
 			}
 		}
@@ -2023,13 +2037,14 @@ void send_device_info_sub(void)
 					cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 					cJSON_AddStringToObject(cs,"model",ss.sc[i].slc[j].model);
 					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].slc[j].firmware);
-					cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].slc[j].HWTtest);
+					cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].slc[j].HWTtest);
 					cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
 					cJSON_AddNumberToObject(cs,"MDID",ss.sc[i].slc[j].MDID);
 					cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].slc[j].macwifi);
 					payload = cJSON_PrintUnformatted(cs);
 					if(payload)	cJSON_Delete(cs);
-					init_tx_message(0x43,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+					if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+					else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
 					send_message(&Txto4004);
 				}
 			}
@@ -2051,13 +2066,14 @@ void send_device_info_sub(void)
 					cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
 					cJSON_AddStringToObject(cs,"model",ss.sc[i].spc[j].model);
 					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].spc[j].firmware);
-					cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].spc[j].HWTtest);
+					cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].spc[j].HWTtest);
 					cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
 					cJSON_AddNumberToObject(cs,"MDID",ss.sc[i].spc[j].MDID);
 					cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].spc[j].macwifi);
 					payload = cJSON_PrintUnformatted(cs);
 					if(payload)	cJSON_Delete(cs);
-					init_tx_message(0x83,0x01,0x00,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
+					if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+					else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
 					send_message(&Txto4004);
 				}
 			}

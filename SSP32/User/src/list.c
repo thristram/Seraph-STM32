@@ -9,7 +9,11 @@ slnode_t *uartTxSLHead = NULL;
 
 /* uart发送单项队列SingleList的表尾 */
 slnode_t *uartTxSLLast = NULL;
+/* uart发送单项队列SingleList的表头 */
+slnode_t *uart2TxSLHead = NULL;
 
+/* uart发送单项队列SingleList的表尾 */
+slnode_t *uart2TxSLLast = NULL;
 
 /* uart接收单项队列SingleList的表头 */
 slnode_t *uartRxSLHead = NULL;
@@ -18,6 +22,7 @@ slnode_t *uartRxSLHead = NULL;
 slnode_t *uartRxSLLast = NULL;
 
 u8 mutex = 0;
+u8 mutex2 = 0;
 /*
 	tx_event_flags_create(&uartTxSLEventGroup, "uart tx event group");	
 	tx_event_flags_set(&uartTxSLEventGroup, uartTxSLEventFlag, TX_OR);
@@ -74,10 +79,42 @@ int addNodeToUartTxSLLast(char *psave, int length)
 		ret = 0;
 	}	
 	return ret;
-
 }
 
+int addNodeToUart2TxSLLast(char *psave, int length)
+{
+	int ret = -1;
+	slnode_t * newNode;
+	char *pdata;
 
+	newNode = (slnode_t *)mymalloc(sizeof(slnode_t)); if(!newNode){ return -1;}
+	/* 0A 0A */
+	pdata = (char *)mymalloc(length); if(!pdata){myfree(newNode); return -1;}
+	mutex2 = 1;
+	if(newNode && pdata){
+		newNode->next = NULL;
+		newNode->len = (u16)length;	
+		newNode->hasWrite = 0;
+		mymemcpy(pdata, psave, length);
+		//因为传入的psave有分配内存，在这里需释放内存
+		myfree(psave);
+		//*(pdata+length) = 0x0a;
+		//*(pdata+length+1)= 0x0a;
+		newNode->data = pdata;
+		mutex2 = 0;
+		if(!uart2TxSLLast){	/* 链表尾是否为空? */
+			uart2TxSLHead = newNode;
+			uart2TxSLLast = newNode;
+			mutex2 = 0;
+		}else{
+			uart2TxSLLast->next = newNode;	/* add node */
+			uart2TxSLLast = newNode;	/* new list end */
+			mutex2 = 0;			
+		}
+		ret = 0;
+	}	
+	return ret;
+}
 /*   A D D   N O D E   T O   C A N 0   T X   S   L   L A S T   */
 /*-------------------------------------------------------------------------
     此函数与链表can1TxSLHead can1TxSLLast 直接绑定
@@ -162,6 +199,27 @@ int deleteNodeFromUartTxSLHead(void)
 	return ret;	
 }
 
+int deleteNodeFromUart2TxSLHead(void)
+{
+	int ret = -1;
+	slnode_t *newhead;
+
+	if(uart2TxSLHead){	/* 链表头不为空 */	
+		if(!uart2TxSLHead->next){	/* 链表头的next为空，即只有一个节点，链表头和链表尾都指向该节点 */
+			if(uart2TxSLHead->data) {myfree(uart2TxSLHead->data);}
+			myfree(uart2TxSLHead);
+			uart2TxSLHead = NULL;
+			uart2TxSLLast = NULL;
+		}else{	/* 链表头的next不为空，即有两个或两个以上的节点 */
+			newhead = uart2TxSLHead->next;
+			if(uart2TxSLHead->data) {myfree(uart2TxSLHead->data);}
+			myfree(uart2TxSLHead);
+			uart2TxSLHead = newhead;			
+		}	
+		ret = 0;
+	}
+	return ret;	
+}
 /*   D E L E T E   N O D E   F R O M   C A N 0   T X   S   L   H E A D   */
 /*-------------------------------------------------------------------------
    从链表头删除节点

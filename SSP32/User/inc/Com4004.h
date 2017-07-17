@@ -562,7 +562,7 @@ COM4004_EXT void dela_alarm(u8 *buf);
 COM4004_EXT void send_config_ss(void);
 COM4004_EXT void send_data_sync(u8 type);
 COM4004_EXT void send_deepin_data_sync(void);
-COM4004_EXT void send_device_info_sub(void);
+COM4004_EXT void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L);
 COM4004_EXT void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L);
 COM4004_EXT void send_device_malfunction(void);
 

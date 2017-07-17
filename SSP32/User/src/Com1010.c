@@ -3,6 +3,7 @@
 #define _COM1010_GLOBAL
 #include "includes.h"
 #include <stdlib.h>
+extern void DelayMicroSeconds(int32_t nbrofUs);
 
 /**
   * @brief  check sum(cumulative sum)
@@ -138,7 +139,7 @@ u8 ascii2hex(char bChar)
 /*************SICP接收数据分析**********************/
 void rev_anaylze(void)
 {
-	u8 i;
+	u8 i,j;
 	u8 	rev_message_id;
 	u16 rev_mesh_id;
 	if(usart2_rev_success){
@@ -311,6 +312,65 @@ void rev_anaylze(void)
 						sicp_receipt(0x02,rev_message_id,rev_mesh_id);
 						break;
 					}
+				}
+				break;
+			case 0x08:
+				switch(sicp_buf[12]){
+					case 0x51://ST发来控制DM的异步通知
+						for(i = 0; i < 5; i++){//找到相应的sc
+							if(ss.sc[i].meshid == (u16)((sicp_buf[10]<<8) | sicp_buf[11])){
+								for(j = 0; j < 15;j++){
+									if(ss.sc[i].slc[j].MDID == ((sicp_buf[13]&0xf0)>>4)){
+										switch((sicp_buf[13]&0x0f)){
+											case 1:
+												ss.sc[i].slc[j].ch1_status = sicp_buf[14];
+												break;
+											case 2:
+												ss.sc[i].slc[j].ch2_status = sicp_buf[14];
+												break;
+											case 3:
+												ss.sc[i].slc[j].ch3_status = sicp_buf[14];
+												break;
+											default:
+												break;
+										}
+										break;
+									}
+								}
+								sicp_receipt(0x02,rev_message_id,rev_mesh_id);
+								break;
+							}
+						}
+						break;
+					case 0x55:
+						for(i = 0; i < 5; i++){//找到相应的sc
+							if(ss.sc[i].meshid == (u16)((sicp_buf[10]<<8) | sicp_buf[11])){
+								for(j = 0; j < 15;j++){
+									if(ss.sc[i].spc[j].MDID == ((sicp_buf[13]&0xf0)>>4)){
+										switch((sicp_buf[13]&0x0f)){
+											case 1:
+												ss.sc[i].spc[j].ch1_status = sicp_buf[14];
+												break;
+											case 2:
+												ss.sc[i].spc[j].ch2_status = sicp_buf[14];
+												break;
+											case 4:
+												ss.sc[i].spc[j].ch3_status = sicp_buf[14];
+												break;
+											default:
+												break;
+										}
+										break;
+									}
+								}
+								sicp_receipt(0x02,rev_message_id,rev_mesh_id);
+								break;
+							}
+						}
+						break;
+					default:
+						sicp_receipt(0x03,rev_message_id,rev_mesh_id);
+						break;
 				}
 				break;
 			default:
@@ -513,7 +573,7 @@ void deal_device_info(u8 type)
 						ss.st[i].firmware[1] = hex2ascii((sicp_buf[12]&0x0F));
 					}
 					ss.st[i].HWTtest = sicp_buf[13];
-					sicp_config_cmd(sicp_buf[2],ss.st[i].meshid);
+					sicp_config_cmd(sicp_buf[2],ss.st[i].meshid);//回复st的配置命令
 					ready_st_post = 1;
 				}		
 			}
@@ -646,8 +706,9 @@ void sicp_send_message(SICP_Message *tx,u8 pay_len)
 	USART2_Send_Buf[5] = 4+payload_len;
 	mymemcpy(&USART2_Send_Buf[6],tx->payload,payload_len);
 	USART2_Send_Buf[6+payload_len] = Check_Sum(&USART2_Send_Buf[2],USART2_Send_Buf[5]);
-	Usart2_Send(USART2_Send_Buf,7+payload_len);
-	while(!Usart2_Send_Done);	Usart2_Send_Done = 0;//等待这包数据发送完成
+	//Usart2_Send(USART2_Send_Buf,7+payload_len);
+	//while(!Usart2_Send_Done);	Usart2_Send_Done = 0;//等待这包数据发送完成
+	addNodeToUart2TxSLLast(USART2_Send_Buf,7+payload_len);
 }
 
 
@@ -692,7 +753,7 @@ void sicp_ble_cmd(u8 type,u8 send_message_id,u16 send_mesh_id)
 		sicp_send_message(&ble,2);
 	}
 }
-
+//SS发送config st命令
 void sicp_config_cmd(u8 send_message_id,u16 send_mesh_id)
 {
 	SICP_Message config;
@@ -702,98 +763,111 @@ void sicp_config_cmd(u8 send_message_id,u16 send_mesh_id)
 	u8 gesture_L = 0;
 	u8 i,j;
 	for(i = 0; i < ss_cst_count;i++){//查找相应mesh id的cst配置信息
-		if(send_mesh_id == ss_cst[i].meshid){
-			if(ss_cst[i].type == 1){//配置按键，且本条指令还没被发送过
-				ss_cst[i].type = 0;
-				for(j = 0;j < 5;j++){//寻找配置的mesh id
-					if(strncmp(ss_cst[i].target_id,ss.sc[j].deviceid,10)==0)
-						config_mesh_id = ss.sc[j].meshid;
+		//if(send_mesh_id == ss_cst[i].meshid){
+			if(ss_cst[i].type > 0){
+				if(ss_cst[i].type == 1){//配置按键，且本条指令还没被发送过
+					ss_cst[i].type = 0;
+					for(j = 0;j < 5;j++){//寻找配置的mesh id
+						if(strncmp(ss_cst[i].target_id+2,ss.sc[j].deviceid,8)==0)
+							config_mesh_id = ss.sc[j].meshid;
+					}
+					if(strncmp(ss_cst[i].action,"DM",2)==0)				action = 0x51;
+					else if(strncmp(ss_cst[i].action,"WP",2)==0)	action = 0x55;
+					config.frame_h1 = 0xEE;
+					config.frame_h2 = 0xEE;
+					config.message_id = send_message_id;
+					config.mesh_id_H = (u8)((send_mesh_id&0xFF00)>>8);
+					config.mesh_id_L = (u8)(send_mesh_id&0x00FF);
+					config.payload[0] = 0x04;
+					config.payload[1] = 0x01;
+					config.payload[2] = ss_cst[i].key;
+					config.payload[3] = 0x00;
+					config.payload[4] = (u8)((config_mesh_id&0xFF00) >> 8);
+					config.payload[5] = (u8)(config_mesh_id&0x00FF);
+					config.payload[6] = (u8)((ss_cst[i].mdid<<4) | ss_cst[i].ch);
+					config.payload[7] = action;
+					config.payload[8] = ss_cst[i].value;
+					//config.payload[9] = '\0';
+					sicp_send_message(&config,9);
 				}
-				if(strncmp(ss_cst[i].action,"DM",2)==0)	action = 0x51;
-				config.frame_h1 = 0xEE;
-				config.frame_h2 = 0xAA;
-				config.message_id = send_message_id;
-				config.mesh_id_H = (u8)((send_mesh_id&0xFF00)>>8);
-				config.mesh_id_L = (u8)(send_mesh_id&0x00FF);
-				config.payload[0] = 0x04;
-				config.payload[1] = 0x01;
-				config.payload[2] = ss_cst[i].key;
-				config.payload[3] = 0x00;
-				config.payload[4] = (u8)((config_mesh_id&0xFF00) >> 8);
-				config.payload[5] = (u8)(config_mesh_id&0x00FF);
-				config.payload[6] = ss_cst[i].ch;
-				config.payload[7] = action;
-				config.payload[8] = ss_cst[i].value;
-				//config.payload[9] = '\0';
-				sicp_send_message(&config,9);
+				else if(ss_cst[i].type == 2){//配置手势，且本条指令还没被发送过
+					ss_cst[i].type = 0;
+					for(j = 0;j < 5;j++){//寻找配置的mesh id
+						if(strncmp(ss_cst[i].target_id+2,ss.sc[j].deviceid,8)==0)
+							config_mesh_id = ss.sc[j].meshid;
+					}
+					if(strncmp(ss_cst[i].action,"DM",2)==0)				action = 0x51;
+					else if(strncmp(ss_cst[i].action,"WP",2)==0)	action = 0x55;
+					gesture_H = 0;gesture_L = 0;
+					switch(ss_cst[i].cond[0]){
+						case '1':
+							gesture_H |= 0xE0;
+							break;
+						case '2':
+							gesture_H |= 0xF0;
+							break;
+						case '3':
+							gesture_H |= 0xC0;
+							break;
+						case '4':
+							gesture_H |= 0xD0;
+							break;
+						default:
+							break;
+					}
+					switch(ss_cst[i].cond[1]){
+						case '1':
+							gesture_H |= 0x0E;
+							break;
+						case '2':
+							gesture_H |= 0x0F;
+							break;
+						case '3':
+							gesture_H |= 0x0C;
+							break;
+						case '4':
+							gesture_H |= 0x0D;
+							break;
+						default:
+							break;
+					}
+					switch(ss_cst[i].cond[2]){
+						case '1':
+							gesture_L |= 0xE0;
+							break;
+						case '2':
+							gesture_L |= 0xF0;
+							break;
+						case '3':
+							gesture_L |= 0xC0;
+							break;
+						case '4':
+							gesture_L |= 0xD0;
+							break;
+						default:
+							break;
+					}
+					config.frame_h1 = 0xEE;
+					config.frame_h2 = 0xEE;
+					config.message_id = send_message_id;
+					config.mesh_id_H = (u8)((send_mesh_id&0xFF00)>>8);
+					config.mesh_id_L = (u8)(send_mesh_id&0x00FF);
+					config.payload[0] = 0x04;
+					config.payload[1] = 0x02;
+					config.payload[2] = gesture_H;
+					config.payload[3] = gesture_L;
+					config.payload[4] = (u8)((config_mesh_id&0xFF00) >> 8);
+					config.payload[5] = (u8)(config_mesh_id&0x00FF);
+					config.payload[6] = (u8)((ss_cst[i].mdid<<4) | ss_cst[i].ch);
+					config.payload[7] = action;
+					config.payload[8] = ss_cst[i].value;
+					//config.payload[9] = '\0';
+					sicp_send_message(&config,9);
+				}
+				//short delay 50ms
+				DelayMicroSeconds(50);
 			}
-			if(ss_cst[i].type == 2){//配置手势，且本条指令还没被发送过
-				ss_cst[i].type = 0;
-				for(j = 0;j < 5;j++){//寻找配置的mesh id
-					if(strncmp(ss_cst[i].target_id,ss.sc[j].deviceid,10)==0)
-						config_mesh_id = ss.sc[j].meshid;
-				}
-				if(strncmp(ss_cst[i].action,"DM",2)==0)	action = 0x51;
-				switch(ss_cst[i].cond[0]){
-					case '1':
-						gesture_H |= 0xE0;
-						break;
-					case '2':
-						gesture_H |= 0xF0;
-						break;
-					case '3':
-						gesture_H |= 0xC0;
-						break;
-					case '4':
-						gesture_H |= 0xD0;
-						break;
-				}
-				switch(ss_cst[i].cond[1]){
-					case '1':
-						gesture_H |= 0x0E;
-						break;
-					case '2':
-						gesture_H |= 0x0F;
-						break;
-					case '3':
-						gesture_H |= 0x0C;
-						break;
-					case '4':
-						gesture_H |= 0x0D;
-						break;
-				}
-				switch(ss_cst[i].cond[2]){
-					case '1':
-						gesture_L |= 0xE0;
-						break;
-					case '2':
-						gesture_L |= 0xF0;
-						break;
-					case '3':
-						gesture_L |= 0xC0;
-						break;
-					case '4':
-						gesture_L |= 0xD0;
-						break;
-				}
-				config.frame_h1 = 0xEE;
-				config.frame_h2 = 0xAA;
-				config.message_id = send_message_id;
-				config.mesh_id_H = (u8)((send_mesh_id&0xFF00)>>8);
-				config.mesh_id_L = (u8)(send_mesh_id&0x00FF);
-				config.payload[0] = 0x04;
-				config.payload[1] = 0x02;
-				config.payload[2] = gesture_H;
-				config.payload[3] = gesture_L;
-				config.payload[4] = (u8)((config_mesh_id&0xFF00) >> 8);
-				config.payload[5] = (u8)(config_mesh_id&0x00FF);
-				config.payload[6] = ss_cst[i].ch;
-				config.payload[7] = action;
-				config.payload[8] = ss_cst[i].value;
-				//config.payload[9] = '\0';
-				sicp_send_message(&config,9);
-			}
-		}
+		//}
 	}
 }
 
