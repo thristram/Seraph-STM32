@@ -15,6 +15,9 @@
 
 
 
+#define OUTPUT_AT_NO_DUST		1350		/* 无尘时输出低电平时间 */
+#define OUTPUT_AT_MAX_DUST		5200		/* 最大输出低电平时间 */
+#define OUTPUT_SENSITIVITY_K	3.33		/* 乘积因素 */
 
 
 
@@ -24,8 +27,10 @@ typedef struct
 	uint16_t 	IC1Value;
 
 	uint32_t 	timerFreq;
-	uint32_t 	frequency;
 
+	int 		output_us;		/* 低电平的us数 */
+	
+	float 		frequency;
 	float 		dutyCycle;
 
 }GP2Y1023_value_t;

@@ -106,9 +106,9 @@ typedef struct
 typedef struct
 {
 	int  seqid;
-	char sepid[8];
+	char sepid[12];
 	int  ch;
-	char action[2];
+	char action[4];
 	char topos[4];
 	DM   option;
 	int  stseq;
@@ -118,7 +118,7 @@ typedef struct
 typedef struct
 {
 	int  seqid;
-	char sepid[8];
+	char sepid[12];
 	int  ch;
 	char action[4];
 	char topos[4];
@@ -146,7 +146,7 @@ typedef struct
 
 typedef struct
 {
-	char    sepid[8];
+	char    sepid[12];
 	int 		mode;
 	char 		color[10][6];
 	u8 			color_num;
@@ -220,7 +220,7 @@ typedef struct
 typedef struct
 {
 	int temperature;
-	u16 humidity;
+	u8 humidity;
 	u8  pm2_5_H;
 	u8  pm2_5_L;
 	u8  motion;	//ÔË¶¯´«¸ĞÆ÷
@@ -239,12 +239,12 @@ typedef struct
 typedef struct
 {
 	u16				meshid;
-	char 			deviceid[8];
+	char 			deviceid[12];
 	char			firmware[3];
 	int				HWTtest;
 	char			model[3];//Éè±¸ĞÍºÅ
 	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[17];
+	char			macwifi[20];
 	int				MDID;//ÓÃÓÚ»ã±¨SLC/SPCµÄĞÅÏ¢£¬Ä£¿éID
 	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»ÓĞÍÆËÍ
 	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
@@ -259,12 +259,12 @@ typedef struct
 typedef struct
 {
 	u16				meshid;
-	char 			deviceid[8];
+	char 			deviceid[12];
 	char			firmware[3];
 	int				HWTtest;
 	char			model[3];//Éè±¸ĞÍºÅ
 	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[17];
+	char			macwifi[20];
 	int				MDID;//ÓÃÓÚ»ã±¨SLC/SPCµÄĞÅÏ¢£¬Ä£¿éID
 	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»ÓĞÍÆË
 	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
@@ -278,12 +278,12 @@ typedef struct
 typedef struct
 {
 	u16				meshid;
-	char 			deviceid[8];
+	char 			deviceid[12];
 	char			firmware[3];
 	int				HWTtest;
 	char			model[3];//Éè±¸ĞÍºÅ
 	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[17];
+	char			macwifi[20];
 	SC_sense 	sense;
 	int				Ndevice;//SCÏÂ¹ÒÓĞ¼¸¸öSLC/SPC
 	SLC				slc[15];//Ôİ¶¨£¬Ò»¸öSCÏÂ×î¶à¹Ò15¸öslc
@@ -295,12 +295,12 @@ typedef struct
 typedef struct
 {
 	u16				meshid;
-	char 			deviceid[8];
+	char 			deviceid[12];
 	char			firmware[3];
 	int				HWTtest;
 	char			model[3];//Éè±¸ĞÍºÅ
 	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[17];
+	char			macwifi[20];
 	ST_sense 	sense;
 	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»Ó
 	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
@@ -315,12 +315,12 @@ typedef struct
 typedef struct
 {
 	u16				meshid;
-	char 			deviceid[8];
+	char 			deviceid[12];
 	char			firmware[2];
 	int				HWTtest;
 	char			model[2];//Éè±¸ĞÍºÅ
 	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[17];
+	char			macwifi[20];
 	CS			 	config;
 	SS_sense 	sense;
 	IR				ir;
@@ -342,7 +342,7 @@ typedef struct
 typedef struct
 {
 	int				type;//typeÎª1Ê±±íÊ¾ÅäÖÃÀàĞÍÎª°´¼ü£¬Îª2Ê±ÎªÊÖÊÆ
-	char			target_id[10];
+	char			target_id[12];
 	int				key;
 	char			cond[3];
 	int 			mdid;
@@ -354,25 +354,56 @@ typedef struct
 
 typedef struct
 {
-	char sepid[8];
+	char sepid[12];
 	char ch[2];
 }DES;	//device status data struct
 
 typedef struct
 {
-	char sepid[8];
+	char sepid[12];
 	int  MDID;
+	int  MDID2;
+	int  MDID3;
+	int  MDID4;
+	int  MDID5;
+	int  MDID6;
+	int  MDID7;
+	int  MDID8;
+	int  MDID9;
+	int  MDID10;
+	int  MDID11;
+	int  MDID12;
+	int  MDID13;
+	int  MDID14;
+	int  MDID15;
 	int  CH;
-	char action[2];
+	int  CH2;
+	int  CH3;
+	int  CH4;
+	int  CH5;
+	int  CH6;
+	int  CH7;
+	int  CH8;
+	int  CH9;
+	int  CH10;
+	int  CH11;
+	int  CH12;
+	int  CH13;
+	int  CH14;
+	int  CH15;
+	char action[4];
 	int  topos;
+	int  duration;
 	int  type;
-	char code[6];
+	char code[10];
 	char raw[500];
 }QE;
 
 typedef struct
 {
-	char 			sepid[8];
+	char 			sepid[12];//»Ø¸´payloadÖĞactionÀïµÄsepid
+	char 			sepid2[12];//»Ø¸´payloadÖĞreportÀïµÄsepid
+	int 			MD;
 	ST_sense	sts;
 	struct	PX
 	{
@@ -385,7 +416,7 @@ typedef struct
 		int MD;		//module id;
 		int 	value;
 	}eg;
-	struct	CP
+	struct	CP	//½ÓÊÕµ½µÄÖ¸ÁîÊÇCP´¥Ãş°´¼ü
 	{
 		u8 		isCP;
 		int 	ch;
@@ -409,7 +440,7 @@ typedef struct
 
 typedef struct
 {
-	char sepid[8];
+	char sepid[12];
 	int  level;
 }ALARM;
 
@@ -433,7 +464,7 @@ COM4004_EXT SS_sense	ss_sensedata;	//data sync	,data rscent
 COM4004_EXT	CS				ss_cs;
 COM4004_EXT AR				ss_ar;				//action refreshÉî¶ÈÖ¸Áî
 COM4004_EXT DS				ss_ds;				//data syncÉî¶ÈÖ¸Áî
-COM4004_EXT CST				ss_cst[100];		//config stÔ¤Áô1´Î×î¶àÅäÖÃ6Ìõst
+COM4004_EXT CST				ss_cst[20];		//config stÔ¤Áô1´Î×î¶àÅäÖÃ6Ìõst
 COM4004_EXT u8				ss_cst_count;	//Êµ¼Êconfig stÅäÖÃÁËss_cst_countÌõstĞÅÏ¢
 COM4004_EXT DES				ss_des;				//device statusÉî¶ÈÖ¸Áî
 COM4004_EXT u8				ss_des_message_id_H;

@@ -218,7 +218,8 @@ void rev_analyze(u8 *topic_buf,u8 *cjson_buf)
 		}
 		else if(strncmp(temp_topicbuf,"/device/status",Rxfr4004.rx_var_header.topic_lengthL) == 0)
 		{
-			ack_des = 1;//回复放在Task100mszhon
+			//ack_des = 1;//回复放在Task100ms中
+			deal_device_status(temp_topicbuf);//回复在deal函数中
 			ss_des_message_id_H = Rxfr4004.rx_var_header.message_id_H;
 			ss_des_message_id_L = Rxfr4004.rx_var_header.message_id_L;
 		}
@@ -255,6 +256,8 @@ void rev_analyze(u8 *topic_buf,u8 *cjson_buf)
 		{
 			deal_device_status(temp_topicbuf);//回复在deal函数中
 			//ack_des2 ack_des3在deal_device_status中赋值
+			ss_des_message_id_H = Rxfr4004.rx_var_header.message_id_H;
+			ss_des_message_id_L = Rxfr4004.rx_var_header.message_id_L;
 		}
 		else if(*(temp_topicbuf+1)== 'q' && *(temp_topicbuf+2)=='e')
 		{
@@ -823,7 +826,7 @@ void deal_device_list(u8 *buf)
 												for(k=0;k < 15;k++){
 														//if(strncmp(ss.sc[j].slc[k].deviceid,tmp->valuestring,8)==0){//寻找到SC下对应ID的SLC
 														if(ss.sc[j].slc[k].deviceid[0] == 0x00){//寻找device id为空的SLC
-														mymemcpy(ss.sc[j].slc[k].deviceid,(tmp->valuestring+2),8);
+														mymemcpy(ss.sc[j].slc[k].deviceid,tmp->valuestring,10);
 														tmp = cJSON_GetObjectItem(level2,"model");
 														if(tmp && tmp->valuestring){
 															mymemcpy(ss.sc[j].slc[k].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -844,7 +847,7 @@ void deal_device_list(u8 *buf)
 												for(k=0;k < 15;k++){
 														//if(strncmp(ss.sc[j].spc[k].deviceid,tmp->valuestring,8)==0){//寻找到SC下对应ID的SPC
 														if(ss.sc[j].spc[k].deviceid[0] == 0x00){//寻找device id为空的SPC
-														mymemcpy(ss.sc[j].spc[k].deviceid,(tmp->valuestring+2),8);
+														mymemcpy(ss.sc[j].spc[k].deviceid,tmp->valuestring,10);
 														tmp = cJSON_GetObjectItem(level2,"model");
 														if(tmp && tmp->valuestring){
 															mymemcpy(ss.sc[j].spc[k].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -864,7 +867,7 @@ void deal_device_list(u8 *buf)
 											for(j = 0;j < 5;j++){//找寻SS下对应ID的SC
 													//if(strncmp(ss.sc[i].deviceid,tmp->valuestring,8)){
 													if(ss.sc[j].deviceid[0] == 0x00){//寻找device id为空的SC
-													mymemcpy(ss.sc[j].deviceid,(tmp->valuestring+2),8);
+													mymemcpy(ss.sc[j].deviceid,tmp->valuestring,10);
 													tmp = cJSON_GetObjectItem(level2,"model");
 													if(tmp && tmp->valuestring){
 														mymemcpy(ss.sc[j].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -881,7 +884,7 @@ void deal_device_list(u8 *buf)
 											for(j = 0;j < 20;j++){//找寻SS下deviceid为空的st
 												//if(strncmp(ss.st[i].deviceid,tmp->valuestring,8)){
 												if(ss.st[j].deviceid[0] == 0x00){//寻找device id为空的ST
-													mymemcpy(ss.st[j].deviceid,(tmp->valuestring+2),8);
+													mymemcpy(ss.st[j].deviceid,tmp->valuestring,10);
 													tmp = cJSON_GetObjectItem(level2,"model");
 													if(tmp && tmp->valuestring){
 														mymemcpy(ss.st[j].model,tmp->valuestring,strlen(tmp->valuestring));
@@ -953,16 +956,12 @@ void deal_config_st(u8 *buf)
 	cJSON *root,*tmp,*level1,*level2;
 	int i,j,cmd_size;
 	int index = 0;
-	char deviceid[10];
 	root = cJSON_Parse((char*)buf);
 	ss_cst_count = 0;
 	if(root)
 	{
 		for(j = 0; j < 20;j++){//寻找要配置的st是否为本ss所管理的
-			deviceid[0] = 'S';
-			deviceid[1] = 'T';
-			mymemcpy((deviceid + 2),ss.st[j].deviceid,8);
-			level1 = cJSON_GetObjectItem(root,deviceid);
+			level1 = cJSON_GetObjectItem(root,ss.st[j].deviceid);
 			if(level1){//是本ss所管理的st
 				if(level1->type == cJSON_Array){
 					cmd_size = cJSON_GetArraySize(level1);
@@ -1260,6 +1259,7 @@ void deal_config_strategy_htsp(u8 *buf)//buf是topic内容
 }
 
 
+
 //解析decive_status命令
 void deal_device_status(u8 *buf)//buf是topic内容
 {
@@ -1271,18 +1271,19 @@ void deal_device_status(u8 *buf)//buf是topic内容
 	u8 type;
 	u8 buflen;
 	buflen = strlen(buf);
-	if((buflen > 14)&&(buflen <= 30))	type = 1;
-	else															type = 2;
+	if(buflen <= 14)												type = 3;		//SC下所有SLC和SPC
+	else if((buflen > 14)&&(buflen <= 31))		type = 1;		//针对某个SLC或SPC所有通道
+	else 																		type = 2;		//针对某个SLC或SP某个通道
 	if(type == 1){
-		mymemcpy(ss_des.sepid,(buf+22),8);
-		if(!ss_des.sepid[0]){
+		mymemcpy(ss_des.sepid,(buf+21),10);
+		if(ss_des.sepid[0]){
 			ack_des2 = 1;
 			cs = cJSON_CreateObject();
 			if(ack_des2){
 				ack_des2 = 0;
 				for(i = 0;i < 5;i++){
 					for(j = 0;j < 15;j++){
-						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,8) == 0){//找到与ss_des.sepid对应的slc
+						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
 							cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
 							cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
 							cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
@@ -1291,7 +1292,7 @@ void deal_device_status(u8 *buf)//buf是topic内容
 							doule_break = 1;
 							break;
 						}
-						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,8) == 0){//找到与ss_des.sepid对应的slc
+						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
 							cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
 							cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
 							cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
@@ -1310,17 +1311,17 @@ void deal_device_status(u8 *buf)//buf是topic内容
 			}
 		}
 	}
-	if(type == 2){
-		mymemcpy(ss_des.sepid,(buf+22),8);
-		mymemcpy(ss_des.ch,(buf+33),2);
-		if((!ss_des.sepid[0]) && (!ss_des.ch[0]))	{
+	else if(type == 2){
+		mymemcpy(ss_des.sepid,(buf+21),10);
+		mymemcpy(ss_des.ch,(buf+35),2);
+		if((ss_des.sepid[0]) && (ss_des.ch[0]))	{
 			ack_des3 = 1;
 			cs = cJSON_CreateObject();
 			if(ack_des3){
 				ack_des3 = 0;
 				for(i = 0;i < 5;i++){
 					for(j = 0;j < 15;j++){
-						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,8) == 0){//找到与ss_des.sepid对应的slc
+						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
 							cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
 							if(ss_des.ch[1] == '1')	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
 							if(ss_des.ch[1] == '2')	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
@@ -1329,7 +1330,7 @@ void deal_device_status(u8 *buf)//buf是topic内容
 							doule_break = 1;
 							break;
 						}
-						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,8) == 0){//找到与ss_des.sepid对应的slc
+						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
 							cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
 							if(ss_des.ch[1] == '1')	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
 							if(ss_des.ch[1] == '2')	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
@@ -1348,101 +1349,523 @@ void deal_device_status(u8 *buf)//buf是topic内容
 			}
 		}
 	}
+	else if(type == 3){
+		cs = cJSON_CreateObject();
+		for(i = 0;i < 5;i++){
+			for(j = 0;j < 15;j++){
+				if((!ss.sc[i].slc[j].deviceid[0]) && (ss.sc[i].slc[j].meshid)){//device id和mesh id不为空才发送状态
+					cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
+					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
+					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
+					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
+					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
+				}
+				if((!ss.sc[i].spc[j].deviceid[0]) && (ss.sc[i].spc[j].meshid)){//device id和mesh id不为空才发送状态
+					cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
+					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
+					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
+					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
+					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
+				}
+			}
+		}
+		payload = cJSON_PrintUnformatted(cs);
+		if(payload)	cJSON_Delete(cs);
+		init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
+		send_message(&Txto4004);
+	}
+	memset(ss_des.ch,0,2);memset(ss_des.sepid,0,12);
 }
+
+
+
+
 //解析qe深度命令
+
 void deal_qe(u8 *buf)//buf是topic内容
 {
-	int i = 10;
-	int j = 0;
-	int k = 0;
-	while(*(buf+i) != 0x2F)	i++; 	
-	mymemcpy(ss_qe.sepid,(buf+12),(i-10-2));
-	i++;
-	if(*(buf + i) == 'M'){///qe/sepid/{$SEPID}/MD/1/CH/52/action/DM/topos/99,//qe/sepid/{$SEPID}/MD/1/CH/52/action/WP/topos/99  
-		i += 3;j=i;
-		while(*(buf+i) != 0x2F)	i++;
-		//MD有i-j个数
-		switch(i-j){
-			case 1:
-				ss_qe.MDID = (int)(*(buf + j) - '0');
-				break;
-			case 2:
-				ss_qe.MDID = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
-				break;
-		}
-		i++;
-		if(*(buf + i) == 'C'){
-			i += 3;j = i;
-			while(*(buf+i) != 0x2F)	i++;
-			//CH有i-j个数
-			switch(i-j){
-			case 1:
-				ss_qe.CH = (int)(*(buf + j) - '0');
-				break;
-			case 2:
-				ss_qe.CH = /*(int)(*(buf + j) - '0')*10 +*/(int)(*(buf + j+1) - '0');
-				break;
-			}
-			i++;
-			//action
-			i += 7;
-			ss_qe.action[0] = *(buf+i);i++;
-			ss_qe.action[1] = *(buf+i);i++;
-			//topos
-			i += 7;
-			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
-			else																							ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			/*if((*(buf+i) > 0x30)&&(*(buf+i) <= 0x39))	{ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');}
-			else								{
-				ss_qe.topos = (int)(*(buf + i) - '0');
-			}*/
+	int i = 0;
+	int cnt = 0;
+	int commacnt = 0;
+	int index[12];
+	char data1[20];
+	char data2[20];
+	char data3[20];
+	char data4[20];
+	char data5[20];
+	char data6[20];
+	char data7[500];
+	char data8[20];
+	char data9[20];
+	char data10[20];
+	char data11[20];
+	char comma[] = ",";
+	char *md;
+	memset(index,0,12);
+	memset(data1,0,20);memset(data2,0,20);memset(data3,0,20);memset(data4,0,20);memset(data5,0,20);
+	memset(data6,0,20);memset(data7,0,500);memset(data8,0,20);memset(data9,0,20);memset(data10,0,20);
+	memset(data11,0,20);
+	//qe的topic每2个/转换成数组
+	for(i = 0; i < strlen(buf);i++){
+		if(*(buf + i) == 0x2F)	{index[cnt++] = i;}
+	}
+	if(index[1])	mymemcpy(data1,(buf+index[0]+1),index[1]-index[0]-1);
+	if(index[2])	mymemcpy(data2,(buf+index[1]+1),index[2]-index[1]-1);
+	if(index[3])	mymemcpy(data3,(buf+index[2]+1),index[3]-index[2]-1);
+	if(index[4])	mymemcpy(data4,(buf+index[3]+1),index[4]-index[3]-1);
+	if(index[5])	mymemcpy(data5,(buf+index[4]+1),index[5]-index[4]-1);
+	if(index[6])	mymemcpy(data6,(buf+index[5]+1),index[6]-index[5]-1);
+	if(cnt == 6)	mymemcpy(data7,(buf+index[6]+1),strlen(buf)-index[6]-1);
+	else{
+	if(index[7])	mymemcpy(data7,(buf+index[6]+1),index[7]-index[6]-1);
+	if(index[8])	mymemcpy(data8,(buf+index[7]+1),index[8]-index[7]-1);
+	if(cnt == 9)	mymemcpy(data9,(buf+index[8]+1),strlen(buf)-index[8]-1);
+	else{
+		if(index[9])	mymemcpy(data9,(buf+index[8]+1),index[9]-index[8]-1);
+		if(index[10])	{mymemcpy(data10,(buf+index[9]+1),index[10]-index[9]-1);mymemcpy(data11,(buf+index[10]+1),strlen(buf)-index[10]-1);}
 		}
 	}
-	else if(*(buf + i) == 'a'){
-		//action
-		i += 7;
-		ss_qe.action[0] = *(buf+i);i++;//可能为UR和CP
+
+	if(strncmp(data2,"sepid",5) == 0){
+		mymemcpy(ss_qe.sepid,data3,10);
+	}
+	if(strncmp(data4,"action",6) == 0){
+		if(strlen(data5) == 2){	
+			mymemcpy(ss_qe.action,data5,2);
+			if((strncmp(data5,"DM",2) == 0)||(strncmp(data5,"WP",2) == 0)){
+				if(strncmp(data6,"MD",2) == 0){
+					if(strlen(data7) == 2)			ss_qe.MDID = (int)(data7[0]-'0')*10 + (int)(data7[1]-'0');
+					else if(strlen(data7) == 1)	ss_qe.MDID = (int)(data7[0]-'0');
+				}
+				if(strncmp(data8,"CH",2) == 0)
+					ss_qe.CH = (int)(data9[0] - '0');
+				if(strncmp(data10,"topos",5) == 0){
+					if((data11[0] ==  'F')&&(data11[0] == 'F'))			ss_qe.topos = 0x64;
+					else																						ss_qe.topos = (int)(data11[0] - '0')*10 + (int)(data11[1] - '0');
+				}
+			}
+			else if(strncmp(data5,"UR",2) == 0){
+				if(strncmp(data6,"type",4) == 0){
+					ss_qe.type = (int)(data7[0] - '0');
+					if(strncmp(data8,"code",4) == 0){
+						mymemcpy(ss_qe.code,data9,strlen(data9));
+					}
+				}
+				else if(strncmp(data6,"raw",3) == 0){
+					mymemcpy(ss_qe.code,data7,strlen(data7));
+				}
+			}
+			else if(strncmp(data5,"CP",2) == 0){
+				if(strncmp(data6,"CH",2) == 0){
+					ss_qe.CH = data7[1] - '0';
+					if(strncmp(data8,"topos",5) == 0){
+						if((data9[0] ==  'F')&&(data9[0] == 'F'))			ss_qe.topos = 0x64;
+						else																					ss_qe.topos = (int)(data9[0] - '0')*10 + (int)(data9[1] - '0');
+					}
+				}
+			}
+		}
+		else if(strlen(data5) == 3){
+			mymemcpy(ss_qe.action,data5,3);
+			if(strncmp(data6,"MD",2) == 0){
+				md = strtok(data7,comma);
+				while(md != NULL){
+					commacnt++;
+					switch(commacnt){
+						case 1:
+							if(strlen(md) == 2)	ss_qe.MDID = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID = (int)(*md - '0');
+							break;
+						case 2:
+							if(strlen(md) == 2)	ss_qe.MDID2 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID2 = (int)(*md - '0');
+							break;
+						case 3:
+							if(strlen(md) == 2)	ss_qe.MDID3 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID3 = (int)(*md - '0');
+							break;
+						case 4:
+							if(strlen(md) == 2)	ss_qe.MDID4 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID4 = (int)(*md - '0');
+							break;
+						case 5:
+							if(strlen(md) == 2)	ss_qe.MDID5 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID5 = (int)(*md - '0');
+							break;
+						case 6:
+							if(strlen(md) == 2)	ss_qe.MDID6 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID6 = (int)(*md - '0');
+							break;
+						case 7:
+							if(strlen(md) == 2)	ss_qe.MDID7 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID7 = (int)(*md - '0');
+							break;
+						case 8:
+							if(strlen(md) == 2)	ss_qe.MDID8 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID8 = (int)(*md - '0');
+							break;
+						case 9:
+							if(strlen(md) == 2)	ss_qe.MDID9 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID9 = (int)(*md - '0');
+							break;
+						case 10:
+							if(strlen(md) == 2)	ss_qe.MDID10 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID10 = (int)(*md - '0');
+							break;
+						case 11:
+							if(strlen(md) == 2)	ss_qe.MDID11 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID11 = (int)(*md - '0');
+							break;
+						case 12:
+							if(strlen(md) == 2)	ss_qe.MDID12 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID12 = (int)(*md - '0');
+							break;
+						case 13:
+							if(strlen(md) == 2)	ss_qe.MDID13 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID13 = (int)(*md - '0');
+							break;
+						case 14:
+							if(strlen(md) == 2)	ss_qe.MDID14 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID14 = (int)(*md - '0');
+							break;
+						case 15:
+							if(strlen(md) == 2)	ss_qe.MDID15 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
+							else if(strlen(md) == 1)	ss_qe.MDID15 = (int)(*md - '0');
+							break;
+						default:
+							break;
+					}
+					md = strtok(NULL,comma);
+				}
+			}
+			commacnt = 0;
+			if(strncmp(data8,"CH",2) == 0){
+				md = strtok(data9,comma);
+				while(md != NULL){
+					commacnt++;
+					switch(commacnt){
+						case 1:
+							ss_qe.CH = (int)(*md - '0');
+							break;
+						case 2:
+							ss_qe.CH2 = (int)(*md - '0');
+							break;
+						case 3:
+							ss_qe.CH3 = (int)(*md - '0');
+							break;
+						case 4:
+							ss_qe.CH4 = (int)(*md - '0');
+							break;
+						case 5:
+							ss_qe.CH5 = (int)(*md - '0');
+							break;
+						case 6:
+							ss_qe.CH6 = (int)(*md - '0');
+							break;
+						case 7:
+							ss_qe.CH7 = (int)(*md - '0');
+							break;
+						case 8:
+							ss_qe.CH8 = (int)(*md - '0');
+							break;
+						case 9:
+							ss_qe.CH9 = (int)(*md - '0');
+							break;
+						case 10:
+							ss_qe.CH10 = (int)(*md - '0');
+							break;
+						case 11:
+							ss_qe.CH11 = (int)(*md - '0');
+							break;
+						case 12:
+							ss_qe.CH12 = (int)(*md - '0');
+							break;
+						case 13:
+							ss_qe.CH13 = (int)(*md - '0');
+							break;
+						case 14:
+							ss_qe.CH14 = (int)(*md - '0');
+							break;
+						case 15:
+							ss_qe.CH15 = (int)(*md - '0');
+							break;
+						default:
+							break;
+					}
+					md = strtok(NULL,comma);
+				}
+			}
+			if(strncmp(data10,"topos",5) == 0){
+				if((data11[0] ==  'F')&&(data11[0] == 'F'))			ss_qe.topos = 0x64;
+				else																						ss_qe.topos = (int)(data11[0] - '0')*10 + (int)(data11[1] - '0');
+			}
+		}
+		//free(data1);free(data2);free(data3);free(data4);free(data5);free(data6);
+		//free(data7);free(data8);free(data9);free(data10);free(data11);
+	}
+	
+	/*
+	while(*(buf+i) != 0x2F)	i++; 	
+	mymemcpy(ss_qe.sepid,(buf+10),(i-10));
+	i++;
+	//action
+	i += 7;
+	if(*(buf + i) == 'D'){
+		ss_qe.action[0] = *(buf+i);i++;
 		ss_qe.action[1] = *(buf+i);i++;
-		i++;
-		if(*(buf+i) == 't'){///qe/sepid/{$SEPID}/action/UR/type/8/code/AD7681
-			i += 5;j = i;k=0;
-			while(*(buf+i) != 0x2F)	i++;
-			//type有i-j个数
-			switch(i-j){
-				case 1:
-					ss_qe.type = (int)(*(buf + j) - '0');
+		if(*(buf+i) == 'M'){	//多模块，多通道
+			ss_qe.action[2] = *(buf+i);
+			i += 4;j=i;
+			//MD
+			while(*(buf+i) != 0x2F)	i++;//MD总共有i-j个数
+			for(k = 0; k < i-j;k++){
+				if(*(buf+j+k) == 0x2C)	commacnt++;
+			}
+			switch(commacnt){
+				case 1://同时控制2个模块
+					k=j;
+					while(*(buf+j) != 0x2C)	j++;
+					switch(j-k){
+						case 1:
+							ss_qe.MDID = (int)(*(buf + k) - '0');
+						break;
+						case 2:
+							ss_qe.MDID = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
+						break;
+					}
+					j++;k=j;
+					while(*(buf+j) != 0x2C)	j++;
+					switch(j-k){
+						case 1:
+							ss_qe.MDID2 = (int)(*(buf + k) - '0');
+						break;
+						case 2:
+							ss_qe.MDID2 = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
+						break;
+					}
 					break;
 				case 2:
-					ss_qe.type = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
+					break;
+				case 3:
+					break;
+				case 4:
+					break;
+				case 5:
+					break;
+				case 6:
+					break;
+				case 7:
+					break;
+				case 8:
+					break;
+				case 9:
+					break;
+				case 10:
+					break;
+				case 11:
+					break;
+				case 12:
+					break;
+				case 13:
+					break;
+				case 14:
+					break;
+				default:
 					break;
 			}
-			i++;
-			i+=5;
-			while(*(buf+i))	{ss_qe.code[k++] = *(buf+i);i++;}
-		}
-		else if(*(buf+i) == 'r'){///qe/sepid/{$SEPID}/action/UR/raw/990-290-200厖 
-			i += 4;k=0;
-			while(*(buf+i))	{ss_qe.raw[k++] = *(buf+i);i++;}
-		}
-		else if(*(buf+i) == 'C'){///qe/sepid/{$SEPID}/action/CP/CH/52/topos/99
-			i += 3;j = i;
-			while(*(buf+i) != 0x2F)	i++;
-			//CH有i-j个数
-			switch(i-j){
-			case 1:
-				ss_qe.CH = (int)(*(buf + j) - '0');
-				break;
-			case 2:
-				ss_qe.CH = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
-				break;
+			i++;j=i;
+			//CH,CH固定为1位数
+			while(*(buf+i) != 0x2F)	i++;//MD总共有i-j个数
+			for(k = 0; k < i-j;k++){
+				if(*(buf+j+k) == 0x2C)	commacnt++;
 			}
-			i++;
-			//topos
+			switch(commacnt){
+				case 1:
+					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
+					ss_qe.CH2 = (int)(*(buf+j) - '0');
+					break;
+				case 2:
+					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
+					ss_qe.CH2 = (int)(*(buf+j) - '0');j+2;
+					ss_qe.CH3 = (int)(*(buf+j) - '0');
+					break;
+				default:
+					break;
+			}
 			i += 7;
-			if(*(buf+i) == '9')	ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			else								ss_qe.topos = (int)(*(buf + i) - '0');
+			//topos
+			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
+			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
+			//duration
+			i += 11;
+			if(*(buf+i) == 0x2F){
+				i++;
+				ss_qe.duration = (int)(*(buf+i) - '0');
+			}
+		}
+		else if(*(buf+i) == 0x2F){//单模块单通道
+			//MD
+			i += 3;j=i;
+			while(*(buf+i) != 0x2F)	i++;
+			//MD有i-j个数
+			switch(i-j){
+				case 1:
+					ss_qe.MDID = (int)(*(buf + j) - '0');
+					break;
+				case 2:
+					ss_qe.MDID = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
+					break;
+			}
+			//CH,CH固定为1位数
+			i++;
+			ss_qe.CH = (int)(*(buf + i) - '0');
+			//topos，固定为2位数
+			i += 7;
+			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
+			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
+			//duration
+			i += 11;
+			if(*(buf+i) == 0x2F){
+				i++;
+				ss_qe.duration = (int)(*(buf+i) - '0');
+			}
 		}
 	}
+	else if(*(buf + i) == 'W'){
+		ss_qe.action[0] = *(buf+i);i++;
+		ss_qe.action[1] = *(buf+i);i++;
+		if(*(buf+i) == 'M'){
+			ss_qe.action[2] = *(buf+i);
+			i += 4;j=i;
+			//MD
+			while(*(buf+i) != 0x2F)	i++;//MD总共有i-j个数
+			for(k = 0; k < i-j;k++){
+				if(*(buf+j+k) == 0x2C)	commacnt++;
+			}
+			switch(commacnt){
+				case 1://同时控制2个模块
+					k=j;
+					while(*(buf+j) != 0x2C)	j++;
+					switch(j-k){
+						case 1:
+							ss_qe.MDID = (int)(*(buf + k) - '0');
+						break;
+						case 2:
+							ss_qe.MDID = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
+						break;
+					}
+					j++;k=j;
+					while(*(buf+j) != 0x2C)	j++;
+					switch(j-k){
+						case 1:
+							ss_qe.MDID2 = (int)(*(buf + k) - '0');
+						break;
+						case 2:
+							ss_qe.MDID2 = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
+						break;
+					}
+					break;
+				case 2:
+					break;
+				case 3:
+					break;
+				case 4:
+					break;
+				case 5:
+					break;
+				case 6:
+					break;
+				case 7:
+					break;
+				case 8:
+					break;
+				case 9:
+					break;
+				case 10:
+					break;
+				case 11:
+					break;
+				case 12:
+					break;
+				case 13:
+					break;
+				case 14:
+					break;
+				default:
+					break;
+			}
+			i++;j=i;
+			//CH,CH固定为1位数
+			while(*(buf+i) != 0x2F)	i++;//MD总共有i-j个数
+			for(k = 0; k < i-j;k++){
+				if(*(buf+j+k) == 0x2C)	commacnt++;
+			}
+			switch(commacnt){
+				case 1:
+					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
+					ss_qe.CH2 = (int)(*(buf+j) - '0');
+					break;
+				case 2:
+					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
+					ss_qe.CH2 = (int)(*(buf+j) - '0');j+2;
+					ss_qe.CH3 = (int)(*(buf+j) - '0');
+					break;
+				default:
+					break;
+			}
+			i += 7;
+			//topos
+			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
+			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
+			
+		}
+		else if(*(buf+i) == 0x2F){
+			//MD
+			i += 3;j=i;
+			while(*(buf+i) != 0x2F)	i++;
+			//MD有i-j个数
+			switch(i-j){
+				case 1:
+					ss_qe.MDID = (int)(*(buf + j) - '0');
+					break;
+				case 2:
+					ss_qe.MDID = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
+					break;
+			}
+			//CH,CH固定为2位数
+			i++;
+			ss_qe.CH = (int)(*(buf + i) - '0');
+			i += 7;
+			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
+			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
+			//duration
+			i += 11;
+			if(*(buf+i) == 0x2F){
+				i++;
+				ss_qe.duration = (int)(*(buf+i) - '0');
+			}
+		}
+	}
+	else if(*(buf + i) == 'U'){
+		ss_qe.action[0] = *(buf+i);i++;
+		ss_qe.action[1] = *(buf+i);i++;
+		i++;k = 0;
+		if(*(buf+i) == 'c'){
+			//type
+			i += 5;
+			ss_qe.type = (int)(*(buf+i) - '0');
+			//code
+			i += 7;
+			while(*(buf+i))	{ss_qe.code[k++] = *(buf+i);i++;}
+		}
+		else if(*(buf+i) == 'r'){
+			//raw
+			i += 4;
+			while(*(buf+i))	{ss_qe.raw[k++] = *(buf+i);i++;}
+		}
+		
+	}
+	*/
 }
 
 //解析alarm深度指令
@@ -1970,7 +2393,6 @@ void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
 	char *topic;
 	char topic1[] = "/device/info/sub";
 	char topic2[] = "";
-	u8 tmp_deviceid[10];
 	if(type == 0x01) topic = topic1;
 	else						 topic = topic2;
 	
@@ -1979,11 +2401,8 @@ void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
 		for(i = 0;i < 20;i++){
 			if((!ss.st[i].posted) && (ss.st[i].deviceid[0]) && (ready_st_post_meshid == ss.st[i].meshid)){//还没有被推送过且ss.st[i].deviceid[]已经有数据
 				ss.st[i].posted = 1;
-				tmp_deviceid[0] = 'S';
-				tmp_deviceid[1] = 'T';
-				mymemcpy((tmp_deviceid+2),ss.st[i].deviceid,8);
 				cs = cJSON_CreateObject(); 
-				cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
+				cJSON_AddStringToObject(cs,"deviceID",ss.st[i].deviceid);
 				cJSON_AddStringToObject(cs,"model",ss.st[i].model);
 				cJSON_AddStringToObject(cs,"firmware",ss.st[i].firmware);
 				cJSON_AddNumberToObject(cs,"HWtest",ss.st[i].HWTtest);
@@ -2003,11 +2422,8 @@ void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
 		for(i = 0;i < 5;i++){
 			if((!ss.sc[i].posted) && (ss.sc[i].deviceid[0]) &&(ready_sc_post_meshid == ss.sc[i].meshid)){//还没有被推送过且ss.sc[i].deviceid[]已经有数据
 				ss.sc[i].posted = 1;
-				tmp_deviceid[0] = 'S';
-				tmp_deviceid[1] = 'C';
-				mymemcpy((tmp_deviceid+2),ss.sc[i].deviceid,8);
 				cs = cJSON_CreateObject(); 
-				cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
+				cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].deviceid);
 				cJSON_AddStringToObject(cs,"model",ss.sc[i].model);
 				cJSON_AddStringToObject(cs,"firmware",ss.sc[i].firmware);
 				cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].HWTtest);
@@ -2030,11 +2446,8 @@ void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
 			for(j = 0;j < 15;j++){
 				if((!ss.sc[i].slc[j].posted) && (ss.sc[i].slc[j].deviceid[0]) && (ready_slc_post_mdid == ss.sc[i].slc[j].MDID)){//还没有被推送过且ss.slc[i].deviceid[]已经有数据
 					ss.sc[i].slc[j].posted = 1;
-					tmp_deviceid[0] = 'S';
-					tmp_deviceid[1] = 'L';
-					mymemcpy((tmp_deviceid+2),ss.sc[i].slc[j].deviceid,8);
 					cs = cJSON_CreateObject(); 
-					cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
+					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].slc[j].deviceid);
 					cJSON_AddStringToObject(cs,"model",ss.sc[i].slc[j].model);
 					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].slc[j].firmware);
 					cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].slc[j].HWTtest);
@@ -2058,12 +2471,8 @@ void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
 			for(j = 0;j < 15;j++){
 				if((!ss.sc[i].spc[j].posted) && (ss.sc[i].spc[j].deviceid[0]) && (ready_spc_post_mdid == ss.sc[i].spc[j].MDID)){//还没有被推送过且ss.spc[i].deviceid[]已经有数据
 					ss.sc[i].spc[j].posted = 1;
-
-					tmp_deviceid[0] = 'S';
-					tmp_deviceid[1] = 'P';
-					mymemcpy((tmp_deviceid+2),ss.sc[i].spc[j].deviceid,8);
 					cs = cJSON_CreateObject(); 
-					cJSON_AddStringToObject(cs,"deviceID",tmp_deviceid);
+					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].spc[j].deviceid);
 					cJSON_AddStringToObject(cs,"model",ss.sc[i].spc[j].model);
 					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].spc[j].firmware);
 					cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].spc[j].HWTtest);
@@ -2191,7 +2600,7 @@ void send_rt(void)
 	if(rev_st_rt){
 		rev_st_rt = 0;
 		cs = cJSON_CreateObject();
-		if((ss_rt.px.isPX)&&(ss_rt.eg.isEG)){
+		/*if((ss_rt.px.isPX)&&(ss_rt.eg.isEG)){
 			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateArray());
 			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
 			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
@@ -2202,34 +2611,50 @@ void send_rt(void)
 			cJSON_AddNumberToObject(sub_cs2,"MD",ss_rt.eg.MD);
 			cJSON_AddStringToObject(sub_cs2,"type","EG");
 			cJSON_AddNumberToObject(sub_cs2,"value",ss_rt.eg.value);
-		}
-		else if((ss_rt.px.isPX)&&(!ss_rt.eg.isEG)){
+		}*/
+		if((ss_rt.px.isPX)&&(!ss_rt.eg.isEG)){
+			ss_rt.px.isPX = 0;
 			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
 			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid);
 			cJSON_AddStringToObject(sub_cs,"type","PX");
 			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.px.value);
 		}
 		else if((!ss_rt.px.isPX)&&(ss_rt.eg.isEG)){
+			ss_rt.px.isPX = 0;
 			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
 			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid);
 			cJSON_AddNumberToObject(sub_cs,"MD",ss_rt.eg.MD);
 			cJSON_AddStringToObject(sub_cs,"type","EG");
 			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.eg.value);
 		}
-		cJSON_AddItemToObject(cs, "action",sub_cs=cJSON_CreateArray());
+		
 		if(ss_rt.cp.isCP){
+			ss_rt.cp.isCP = 0;
+			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
+			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid2);
+			cJSON_AddNumberToObject(sub_cs,"MD",ss_rt.MD);
+			cJSON_AddStringToObject(sub_cs,"type","CP");
+			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.gt.ch);
+			cJSON_AddItemToObject(cs, "action",sub_cs=cJSON_CreateArray());
 			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
 			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
-			cJSON_AddNumberToObject(sub_cs2,"CH",ss_rt.cp.ch);
-			cJSON_AddStringToObject(sub_cs2,"action",ss_rt.cp.action);
-			cJSON_AddStringToObject(sub_cs2,"topos",ss_rt.cp.topos);
+			cJSON_AddNumberToObject(sub_cs2,"CH",ss_rt.gt.ch);
+			cJSON_AddStringToObject(sub_cs2,"action",ss_rt.gt.action);
+			cJSON_AddStringToObject(sub_cs2,"topos",ss_rt.gt.topos);
 			cJSON_AddItemToObject(sub_cs2,"option",sub_cs3 = cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs3,"duration",ss_rt.cp.option_duration);
-			cJSON_AddNumberToObject(sub_cs3,"erase",ss_rt.cp.option_erase);
-			cJSON_AddNumberToObject(sub_cs2,"timeout",ss_rt.cp.timeout);
+			cJSON_AddNumberToObject(sub_cs3,"duration",ss_rt.gt.option_duration);
+			cJSON_AddNumberToObject(sub_cs3,"erase",ss_rt.gt.option_erase);
+			cJSON_AddNumberToObject(sub_cs2,"timeout",ss_rt.gt.timeout);
 		}
-		cJSON_AddItemToObject(cs, "action",sub_cs=cJSON_CreateArray());
+		
 		if(ss_rt.gt.isGT){
+			ss_rt.gt.isGT = 0;
+			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
+			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid2);
+			cJSON_AddNumberToObject(sub_cs,"MD",ss_rt.MD);
+			cJSON_AddStringToObject(sub_cs,"type","GT");
+			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.gt.ch);
+			cJSON_AddItemToObject(cs, "action",sub_cs=cJSON_CreateArray());
 			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
 			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
 			cJSON_AddNumberToObject(sub_cs2,"CH",ss_rt.gt.ch);
@@ -2244,6 +2669,7 @@ void send_rt(void)
 		if(payload)	cJSON_Delete(cs);
 		init_tx_message(0x43,0x01,0x03,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
 		send_message(&Txto4004);
+		myfree(topic);
 	}
 }
 
@@ -2350,7 +2776,7 @@ void rev_qe(void)
 	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
 	char *payload;
 	char *topic = "";
-	char deviceid[10];
+	int cnt = 0;
 	if(rev_action_done2){
 		rev_action_done2 = 0;
 		cs = cJSON_CreateObject();
@@ -2364,13 +2790,12 @@ void rev_qe(void)
 		for(i = 0; i < 20;i++){
 			if(ss.st[i].status._flag_bit.bit1){//ST收到qe action，且回复执行成功指令
 				ss.st[i].status._flag_bit.bit1 = 0;
+				cnt++;
 				cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs3,"seqid",1);
+				cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
 				cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
 				cJSON_AddStringToObject(sub_cs3,"msg","success");
-				deviceid[0] = 'S';deviceid[1] = 'T';
-				mymemcpy(deviceid+2,ss.st[i].deviceid,8);
-				cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+				cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
 				//cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
 				cJSON_AddNumberToObject(sub_cs3,"C1",ss.st[i].ch1_status);
 				cJSON_AddNumberToObject(sub_cs3,"C2",ss.st[i].ch2_status);
@@ -2379,86 +2804,83 @@ void rev_qe(void)
 				break;
 			}
 			else if(ss.st[i].status._flag_bit.bit2){
+				cnt++;
 				ss.st[i].status._flag_bit.bit2 = 0;
 				cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs3,"seqid",1);
+				cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
 				cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
 				cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-				deviceid[0] = 'S';deviceid[1] = 'T';
-				mymemcpy(deviceid+2,ss.st[i].deviceid,8);
-				cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+				cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
 				//cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
 				cJSON_AddNumberToObject(sub_cs3,"C1",ss.st[i].ch1_status);
 				cJSON_AddNumberToObject(sub_cs3,"C2",ss.st[i].ch2_status);
 				cJSON_AddNumberToObject(sub_cs3,"C3",ss.st[i].ch3_status);
 				cJSON_AddNumberToObject(sub_cs3,"C4",ss.st[i].ch4_status);
+				break;
 			}
 		}
 		//查询SC是否接收到qe action回复
 		for(i = 0;i < 5;i++){
 			for(j = 0; j < 15;j++){
 				if(ss.sc[i].slc[j].status._flag_bit.bit1){//SLC收到qe action，且回复执行成功指令
+					
 					ss.sc[i].slc[j].status._flag_bit.bit1 = 0;
+					cnt++;
 					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
+					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
 					cJSON_AddStringToObject(sub_cs3,"msg","success");
-					deviceid[0] = 'S';deviceid[1] = 'L';
-					mymemcpy(deviceid+2,ss.sc[i].slc[j].deviceid,8);
-					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+					cJSON_AddItemToObject(sub_cs2,ss.sc[i].slc[j].deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].slc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].slc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].slc[j].ch3_status);
-					double_break = 1;
-					break;
+					//double_break = 1;
+					//break;
 				}
 				else if(ss.sc[i].slc[j].status._flag_bit.bit2){
 					ss.sc[i].slc[j].status._flag_bit.bit2 = 0;
+					cnt++;
 					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
+					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
 					cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-					deviceid[0] = 'S';deviceid[1] = 'L';
-					mymemcpy(deviceid+2,ss.sc[i].slc[j].deviceid,8);
-					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+					cJSON_AddItemToObject(sub_cs2,ss.sc[i].slc[j].deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].slc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].slc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].slc[j].ch3_status);
 					double_break = 1;
-					break;
+					//break;
 				}
 				if(ss.sc[i].spc[j].status._flag_bit.bit1){//SPC收到qe action，且回复执行成功指令
 					ss.sc[i].spc[j].status._flag_bit.bit1 = 0;
+					cnt++;
 					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
+					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
 					cJSON_AddStringToObject(sub_cs3,"msg","success");
-					deviceid[0] = 'S';deviceid[1] = 'P';
-					mymemcpy(deviceid+2,ss.sc[i].spc[j].deviceid,8);
-					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+					cJSON_AddItemToObject(sub_cs2,ss.sc[i].spc[j].deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].spc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].spc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].spc[j].ch3_status);
-					double_break = 1;
-					break;
+					//double_break = 1;
+					//break;
 				}
 				else if(ss.sc[i].spc[j].status._flag_bit.bit2){
 					ss.sc[i].spc[j].status._flag_bit.bit2 = 0;
+					cnt++;
 					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",1);
+					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
 					cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
 					cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-					deviceid[0] = 'S';deviceid[1] = 'P';
-					mymemcpy(deviceid+2,ss.sc[i].spc[j].deviceid,8);
-					cJSON_AddItemToObject(sub_cs2,deviceid,sub_cs3=cJSON_CreateObject());
+					cJSON_AddItemToObject(sub_cs2,ss.sc[i].spc[j].deviceid,sub_cs3=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].spc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].spc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].spc[j].ch3_status);
-					double_break = 1;
-					break;
+					//double_break = 1;
+					//break;
 				}
 			}
-			if(double_break)	{double_break = 0;break;}
+			//if(double_break)	{double_break = 0;break;}
 		}
 		payload = cJSON_PrintUnformatted(cs);
 		if(payload)	cJSON_Delete(cs);
@@ -2501,6 +2923,5 @@ void rev_device_status(void)
 		init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
 		send_message(&Txto4004);
 	}
-	myfree(topic);
 }
 

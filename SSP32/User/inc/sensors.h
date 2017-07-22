@@ -25,6 +25,37 @@ typedef unsigned int  	uint;
 
 
 
+
+#define PRINTF_EN		0
+
+#if PRINTF_EN
+
+#define sensors_printf(...)   		printf( __VA_ARGS__ )
+
+
+#else
+
+#define sensors_printf(...) 		
+
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 typedef struct
 {
 	u32	co_tgs5342;
@@ -50,24 +81,6 @@ typedef enum
 
 typedef struct
 {
-	float co_tgs5342;
-	float voc_tgs2600_RS_R0;
-	float nis05;
-
-
-
-
-	VOC_TGS2600_LEVEL	voc_tgs2600_level;	/* 空气质量等级 */
-	int nis05_;
-	int	co_tgs5342_;
-
-}sensors_value_t;
-
-
-
-
-typedef struct
-{
 	u32t	  serialNumber;// serial number
 	regStatus status;	   // sensor status
 	ft		  temperature; // temperature [癈]
@@ -80,17 +93,56 @@ typedef struct
 
 
 
+
+typedef struct
+{
+
+	float 	co_tgs5342;					/* co浓度 */
+	float 	co_tgs5342_temp;			/* co浓度 温度修正后 */
+
+	int		co_tgs5342_;
+
+
+
+	float 	voc_tgs2600_RS_R0;				/* RS/R0 R0 = */
+	VOC_TGS2600_LEVEL	voc_tgs2600_level;	/* 空气质量等级 */
+	
+
+
+	float	pm25_density;			/* pm2.5浓度值 */
+
+
+	int 	co2_density;			/* 读取的co2浓度值  */
+
+
+	int 	removeFlag;				/* PYD1798 为1是表示检测到人体移动，为0是表示没有检测到人体移动 */
+
+	int 	smokeModule_value;		/* 烟雾 */
+
+	
+
+	sht3x_value_t sht3x;		/* sht30 */
+
+
+
+
+}sensors_value_t;
+
+
+
+
+
+
 /*--------------------------- ADC1 ---------------------------------*/
 
 
-#define ADC1_SCAN_CHANNEL_NUM	3
 #define ADC1_FILTER_NUM 		3
 
 
 /*------------------------ VOC_TGS2600 -------------------------------*/
 
-/* 2600在空气中的电阻值 */
-#define VOC_TGS2600_R0		20.0
+/* 2600在空气中的电阻值 kΩ 对应的电压采样值为195，室内平均采样值为250  */
+#define VOC_TGS2600_R0		20.0	
 
 #define VOC_TGS2600_RS_R0_1	0.5
 #define VOC_TGS2600_RS_R0_2	0.3
@@ -105,7 +157,6 @@ typedef struct
 extern ADC1_value_t	ADC1_value;
 extern sensors_value_t sensors_value;
 
-extern sht3x_value_t sht3x_value;
 
 
 

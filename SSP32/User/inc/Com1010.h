@@ -28,8 +28,8 @@ action-command:
 sc1~sc5分别为75~79
 quick-event发送action-command：
 st1~st20分别为80~99
-sc1~sc5分别为100~104
-
+sc1~sc5分别为100~104 单模块
+sc1~sc5分别为105~109	多模块
 led-command:
 st1~st20分别为110~119
 
@@ -57,16 +57,31 @@ typedef struct
 
 typedef struct
 {
-	char deviceid[8];
+	char deviceid[12];
 	u8 message_id;
 	u8 mesh_id_H;
 	u8 mesh_id_L;
 	u8 action_timeout;
 	u8 action_cmd;
+	u8 action_channel_cnt;
 	u8 action_channel;
 	u8 action_value;
 	u8 action_ext;
 	u8 action_ing;//等待第1条指令发送标志
+	u8 action_channel2;
+	u8 action_channel3;
+	u8 action_channel4;
+	u8 action_channel5;
+	u8 action_channel6;
+	u8 action_channel7;
+	u8 action_channel8;
+	u8 action_channel9;
+	u8 action_channel10;
+	u8 action_channel11;
+	u8 action_channel12;
+	u8 action_channel13;
+	u8 action_channel14;
+	u8 action_channel15;
 }ACTION;
 
 typedef struct

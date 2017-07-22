@@ -140,6 +140,7 @@ u8 ascii2hex(char bChar)
 void rev_anaylze(void)
 {
 	u8 i,j;
+	u8 break_flag = 0;
 	u8 	rev_message_id;
 	u16 rev_mesh_id;
 	if(usart2_rev_success){
@@ -235,7 +236,7 @@ void rev_anaylze(void)
 					}
 
 				}
-				else if((rev_message_id >= 100) && (rev_message_id < 105)){//说明接收到的qe action的回复 SLC/SPC
+				else if((rev_message_id >= 100) && (rev_message_id < 105)){//说明接收到的qe action的回复 SLC/SPC 单模块
 					if(sicp_buf[7] == 0x05){//执行成功
 						for(i = 0; i < 15;i++){
 							if(ss.sc[rev_message_id-100].slc[i].MDID == sicp_buf[8]){
@@ -244,6 +245,7 @@ void rev_anaylze(void)
 								ss.sc[rev_message_id-100].slc[i].ch3_status = sicp_buf[11];
 								ss.sc[rev_message_id-100].slc[i].ch4_status = sicp_buf[12];
 								ss.sc[rev_message_id-100].slc[i].status._flag_bit.bit1 = 1;
+								rev_action_success_cnt++;
 								rev_action_done2 = 1;
 								break;	
 							}
@@ -255,6 +257,7 @@ void rev_anaylze(void)
 								ss.sc[rev_message_id-100].spc[i].ch3_status = sicp_buf[11];
 								ss.sc[rev_message_id-100].spc[i].ch4_status = sicp_buf[12];
 								ss.sc[rev_message_id-100].spc[i].status._flag_bit.bit1 = 1;
+								rev_action_success_cnt++;
 								rev_action_done2 = 1;								
 								break;
 							}
@@ -280,6 +283,61 @@ void rev_anaylze(void)
 					}
 					
 				}
+				else if((rev_message_id >= 105) && (rev_message_id < 109)){//说明接收到的qe action的回复 SLC/SPC 多模块
+					if(sicp_buf[7] == 0x05){//执行成功
+						for(j = 0;j < sicp_buf[8];j++){
+							for(i = 0; i < 15;i++){
+								if(ss.sc[rev_message_id-105].slc[i].MDID == sicp_buf[9+j*5]){
+									ss.sc[rev_message_id-105].slc[i].ch1_status = sicp_buf[10+j*5];
+									ss.sc[rev_message_id-105].slc[i].ch2_status = sicp_buf[11+j*5];
+									ss.sc[rev_message_id-105].slc[i].ch3_status = sicp_buf[12+j*5];
+									ss.sc[rev_message_id-105].slc[i].ch4_status = sicp_buf[13+j*5];
+									ss.sc[rev_message_id-105].slc[i].status._flag_bit.bit1 = 1;
+									rev_action_success_cnt++;
+									rev_action_done2 = 1;
+									break;
+								}
+							}	
+						}
+						for(j = 0;j < sicp_buf[8];j++){
+							for(i = 0; i < 15;i++){
+								if(ss.sc[rev_message_id-105].spc[i].MDID == sicp_buf[9+j*5]){
+									ss.sc[rev_message_id-105].spc[i].ch1_status = sicp_buf[10+j*5];
+									ss.sc[rev_message_id-105].spc[i].ch2_status = sicp_buf[11+j*5];
+									ss.sc[rev_message_id-105].spc[i].ch3_status = sicp_buf[12+j*5];
+									ss.sc[rev_message_id-105].spc[i].ch4_status = sicp_buf[13+j*5];
+									ss.sc[rev_message_id-105].spc[i].status._flag_bit.bit1 = 1;
+									rev_action_success_cnt++;
+									rev_action_done2 = 1;								
+									break;
+								}
+							}
+						}
+					}
+					else if(sicp_buf[7] == 0x03){//执行失败
+						for(j = 0;j < sicp_buf[8];j++){
+							for(i = 0; i < 15;i++){
+								if(ss.sc[rev_message_id-105].slc[i].MDID == sicp_buf[9+j]){
+									ss.sc[rev_message_id-105].slc[i].status._flag_bit.bit2 = 1;
+									rev_action_fail_cnt++;
+									rev_action_done2 = 1;
+									break;	
+								}
+							}
+						}
+						for(j = 0;j < sicp_buf[8];j++){
+						for(i = 0; i < 15;i++){
+								if(ss.sc[rev_message_id-105].spc[i].MDID == sicp_buf[9+j]){
+									ss.sc[rev_message_id-105].spc[i].status._flag_bit.bit2 = 1;
+									rev_action_fail_cnt++;
+									rev_action_done2 = 1;
+									break;
+								}
+							}
+						}
+					}
+				}
+				
 				else if((rev_message_id >= 130) && (rev_message_id < 140)){//收到st alert cmd回复
 					
 				}
@@ -315,12 +373,24 @@ void rev_anaylze(void)
 				}
 				break;
 			case 0x08:
+				if(sicp_buf[7] == 0x01)					{rev_st_rt = 1;ss_rt.cp.isCP = 1;}
+				else if(sicp_buf[7] == 0x02)		{rev_st_rt = 1;ss_rt.gt.isGT = 1;}
 				switch(sicp_buf[12]){
 					case 0x51://ST发来控制DM的异步通知
 						for(i = 0; i < 5; i++){//找到相应的sc
 							if(ss.sc[i].meshid == (u16)((sicp_buf[10]<<8) | sicp_buf[11])){
+								
 								for(j = 0; j < 15;j++){
 									if(ss.sc[i].slc[j].MDID == ((sicp_buf[13]&0xf0)>>4)){
+										mymemcpy(ss_rt.sepid2,ss.sc[i].deviceid,10);
+										mymemcpy(ss_rt.sepid,ss.sc[i].slc[j].deviceid,10);
+										ss_rt.MD = ss.sc[i].slc[j].MDID;
+										ss_rt.gt.action[0] = 'D';ss_rt.gt.action[0] = 'M';
+										ss_rt.gt.ch = sicp_buf[13];
+										ss_rt.gt.topos[0] = hex2ascii(sicp_buf[14]/10);ss_rt.gt.topos[1] = hex2ascii(sicp_buf[14]%10);
+										ss_rt.gt.option_duration = sicp_buf[15]/10;
+										ss_rt.gt.option_erase  = 1;
+										ss_rt.gt.timeout = 3;
 										switch((sicp_buf[13]&0x0f)){
 											case 1:
 												ss.sc[i].slc[j].ch1_status = sicp_buf[14];
@@ -345,8 +415,18 @@ void rev_anaylze(void)
 					case 0x55:
 						for(i = 0; i < 5; i++){//找到相应的sc
 							if(ss.sc[i].meshid == (u16)((sicp_buf[10]<<8) | sicp_buf[11])){
+								
 								for(j = 0; j < 15;j++){
 									if(ss.sc[i].spc[j].MDID == ((sicp_buf[13]&0xf0)>>4)){
+										mymemcpy(ss_rt.sepid2,ss.sc[i].deviceid,10);
+										mymemcpy(ss_rt.sepid,ss.sc[i].spc[j].deviceid,10);
+										ss_rt.MD = ss.sc[i].spc[j].MDID;
+										ss_rt.gt.action[0] = 'W';ss_rt.gt.action[0] = 'P';
+										ss_rt.gt.ch = sicp_buf[13];
+										ss_rt.gt.topos[0] = hex2ascii(sicp_buf[14]/10);ss_rt.gt.topos[1] = hex2ascii(sicp_buf[14]%10);
+										ss_rt.gt.option_duration = sicp_buf[15]/10;
+										ss_rt.gt.option_erase  = 1;
+										ss_rt.gt.timeout = 3;
 										switch((sicp_buf[13]&0x0f)){
 											case 1:
 												ss.sc[i].spc[j].ch1_status = sicp_buf[14];
@@ -413,27 +493,29 @@ void rev_anaylze(void)
 //处理device info指令
 void deal_device_info(u8 type)
 {
-	u8  rev_deviceid[8];
+	u8  rev_deviceid[12];
 	u8  i,j;
 	u8 	acceptable = 0;
 	ready_sc_post_meshid = 0;
 	ready_st_post_meshid = 0;
 	ready_slc_post_mdid = 0;
 	ready_slc_post_mdid = 0;
+	memset(rev_deviceid,0,12);
 	switch(type)
 	{
 		case 0xB1://SC
 			rev_B1 = 1;
-			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
-			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
-			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
-			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
-			rev_deviceid[5] = hex2ascii((sicp_buf[9]&0x0F));
-			rev_deviceid[6] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
-			rev_deviceid[7] = hex2ascii((sicp_buf[10]&0x0F));
+			rev_deviceid[0] = 'S';rev_deviceid[1] = 'C';
+			rev_deviceid[2] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[3] = hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[4] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
+			rev_deviceid[5] = hex2ascii((sicp_buf[8]&0x0F));
+			rev_deviceid[6] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
+			rev_deviceid[7] = hex2ascii((sicp_buf[9]&0x0F));
+			rev_deviceid[8] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
+			rev_deviceid[9] = hex2ascii((sicp_buf[10]&0x0F));
 			for(i = 0;i<5;i++){
-				if(strncmp(ss.sc[i].deviceid,rev_deviceid,8)==0){//找到对应device id的sc，说明device info合法
+				if(strncmp(ss.sc[i].deviceid,rev_deviceid,10)==0){//找到对应device id的sc，说明device info合法
 					ready_sc_post_meshid = ss.sc[i].meshid = (((u16)sicp_buf[3])<<8) + (u16)sicp_buf[4];
 					acceptable = 1;
 					if(sicp_buf[11] < 0x0F){
@@ -464,17 +546,18 @@ void deal_device_info(u8 type)
 			break;
 		case 0xB2://SLC
 			rev_B2 = 1;
-			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
-			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
-			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
-			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
-			rev_deviceid[5] = hex2ascii((sicp_buf[9]&0x0F));
-			rev_deviceid[6] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
-			rev_deviceid[7] = hex2ascii((sicp_buf[10]&0x0F));
+			rev_deviceid[0] = 'S';rev_deviceid[1] = 'L';
+			rev_deviceid[2] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[3] = hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[4] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
+			rev_deviceid[5] = hex2ascii((sicp_buf[8]&0x0F));
+			rev_deviceid[6] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
+			rev_deviceid[7] = hex2ascii((sicp_buf[9]&0x0F));
+			rev_deviceid[8] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
+			rev_deviceid[9] = hex2ascii((sicp_buf[10]&0x0F));
 			for(i = 0;i < 5;i++){
 				for(j = 0;j < 15;j++){
-					if(strncmp(ss.sc[i].slc[j].deviceid,rev_deviceid,8)==0){//找到对应device id的slc，说明device info合法
+					if(strncmp(ss.sc[i].slc[j].deviceid,rev_deviceid,10)==0){//找到对应device id的slc，说明device info合法
 						acceptable = 1;
 						if(sicp_buf[11] < 0x0F){
 							ss.sc[i].slc[j].model[0] = hex2ascii(sicp_buf[11]);
@@ -506,17 +589,18 @@ void deal_device_info(u8 type)
 			break;
 		case 0xB3://SPC
 			rev_B3 = 1;
-			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
-			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
-			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
-			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
-			rev_deviceid[5] = hex2ascii((sicp_buf[9]&0x0F));
-			rev_deviceid[6] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
-			rev_deviceid[7] = hex2ascii((sicp_buf[10]&0x0F));
+			rev_deviceid[0] = 'S';rev_deviceid[1] = 'P';
+			rev_deviceid[2] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[3] = hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[4] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
+			rev_deviceid[5] = hex2ascii((sicp_buf[8]&0x0F));
+			rev_deviceid[6] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
+			rev_deviceid[7] = hex2ascii((sicp_buf[9]&0x0F));
+			rev_deviceid[8] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
+			rev_deviceid[9] = hex2ascii((sicp_buf[10]&0x0F));
 			for(i = 0;i < 5;i++){
 				for(j = 0;j < 15;j++){
-					if(strncmp(ss.sc[i].spc[j].deviceid,rev_deviceid,8)==0){//找到对应device id的slc，说明device info合法
+					if(strncmp(ss.sc[i].spc[j].deviceid,rev_deviceid,10)==0){//找到对应device id的slc，说明device info合法
 						acceptable = 1;
 						if(sicp_buf[11] < 0x0F){
 							ss.sc[i].spc[j].model[0] = hex2ascii(sicp_buf[11]);
@@ -546,16 +630,17 @@ void deal_device_info(u8 type)
 			break;
 		case 0xB4://ST
 			rev_B4 = 1;
-			rev_deviceid[0] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
-			rev_deviceid[1] = hex2ascii((sicp_buf[7]&0x0F));
-			rev_deviceid[2] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
-			rev_deviceid[3] = hex2ascii((sicp_buf[8]&0x0F));
-			rev_deviceid[4] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
-			rev_deviceid[5] = hex2ascii((sicp_buf[9]&0x0F));
-			rev_deviceid[6] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
-			rev_deviceid[7] = hex2ascii((sicp_buf[10]&0x0F));
+			rev_deviceid[0] = 'S';rev_deviceid[1] = 'T';
+			rev_deviceid[2] = hex2ascii(((sicp_buf[7]&0xF0)>>4));
+			rev_deviceid[3] = hex2ascii((sicp_buf[7]&0x0F));
+			rev_deviceid[4] = hex2ascii(((sicp_buf[8]&0xF0)>>4));
+			rev_deviceid[5] = hex2ascii((sicp_buf[8]&0x0F));
+			rev_deviceid[6] = hex2ascii(((sicp_buf[9]&0xF0)>>4));
+			rev_deviceid[7] = hex2ascii((sicp_buf[9]&0x0F));
+			rev_deviceid[8] = hex2ascii(((sicp_buf[10]&0xF0)>>4));
+			rev_deviceid[9] = hex2ascii((sicp_buf[10]&0x0F));
 			for(i = 0;i < 20;i++){
-				if(strncmp(ss.st[i].deviceid,rev_deviceid,8)==0){//找到对应device id的sc，说明device info合法
+				if(strncmp(ss.st[i].deviceid,rev_deviceid,10)==0){//找到对应device id的sc，说明device info合法
 					acceptable = 1;
 					ready_st_post_meshid = ss.st[i].meshid = (((u16)sicp_buf[3])<<8) + (u16)sicp_buf[4];
 					if(sicp_buf[11] < 0x0F){
@@ -768,7 +853,7 @@ void sicp_config_cmd(u8 send_message_id,u16 send_mesh_id)
 				if(ss_cst[i].type == 1){//配置按键，且本条指令还没被发送过
 					ss_cst[i].type = 0;
 					for(j = 0;j < 5;j++){//寻找配置的mesh id
-						if(strncmp(ss_cst[i].target_id+2,ss.sc[j].deviceid,8)==0)
+						if(strncmp(ss_cst[i].target_id,ss.sc[j].deviceid,10)==0)
 							config_mesh_id = ss.sc[j].meshid;
 					}
 					if(strncmp(ss_cst[i].action,"DM",2)==0)				action = 0x51;
@@ -793,7 +878,7 @@ void sicp_config_cmd(u8 send_message_id,u16 send_mesh_id)
 				else if(ss_cst[i].type == 2){//配置手势，且本条指令还没被发送过
 					ss_cst[i].type = 0;
 					for(j = 0;j < 5;j++){//寻找配置的mesh id
-						if(strncmp(ss_cst[i].target_id+2,ss.sc[j].deviceid,8)==0)
+						if(strncmp(ss_cst[i].target_id,ss.sc[j].deviceid,10)==0)
 							config_mesh_id = ss.sc[j].meshid;
 					}
 					if(strncmp(ss_cst[i].action,"DM",2)==0)				action = 0x51;
@@ -1053,8 +1138,8 @@ u8 get_ss_ap(u8 x)
 			//查找是哪一个SC下的SLC，填入相应的message id
 			for(j = 0; j < 5;j++){
 				for(k = 0; k < 15;k++){
-					if(strncmp(ss_ap.sl_ap[i].sepid,ss.sc[j].slc[k].deviceid,8)==0){
-						mymemcpy(action[x-1].deviceid,ss.sc[j].slc[k].deviceid,8);
+					if(strncmp(ss_ap.sl_ap[i].sepid,ss.sc[j].slc[k].deviceid,10)==0){
+						mymemcpy(action[x-1].deviceid,ss.sc[j].slc[k].deviceid,10);
 						action[x-1].message_id = j+75;
 						action[x-1].mesh_id_H = (u8)((ss.sc[j].meshid&0xFF00)>>8);
 						action[x-1].mesh_id_L = (u8)(ss.sc[j].meshid&0x00FF);
@@ -1079,8 +1164,8 @@ u8 get_ss_ap(u8 x)
 			action[x-1].action_timeout = ss_ap.sp_ap[i].timeout;
 			for(j = 0; j < 5;j++){
 				for(k =0;k < 15;k++){
-					if(strncmp(ss_ap.sp_ap[i].sepid,ss.sc[j].spc[k].deviceid,8)==0){
-						mymemcpy(action[x-1].deviceid,ss.sc[j].spc[k].deviceid,8);
+					if(strncmp(ss_ap.sp_ap[i].sepid,ss.sc[j].spc[k].deviceid,10)==0){
+						mymemcpy(action[x-1].deviceid,ss.sc[j].spc[k].deviceid,10);
 						action[x-1].message_id = j+75;
 						action[x-1].mesh_id_H = (u8)((ss.sc[j].meshid&0xFF00)>>8);
 						action[x-1].mesh_id_L = (u8)(ss.sc[j].meshid&0x00FF);
@@ -1093,59 +1178,131 @@ u8 get_ss_ap(u8 x)
 	}
 	return type;
 }
+
+/////////////////////////////////
+//计算action_qe.action_channel_cnt并赋值action_qe.action_channel~action_qe.action_channel15
+/////////////////////////////////
+void calc_multi_action_qe(void)
+{
+	u8 i;
+	
+	int *mdid[15]={&ss_qe.MDID,&ss_qe.MDID2,&ss_qe.MDID3,&ss_qe.MDID4,&ss_qe.MDID5,
+								&ss_qe.MDID6,&ss_qe.MDID7,&ss_qe.MDID8,&ss_qe.MDID9,&ss_qe.MDID10,
+								&ss_qe.MDID11,&ss_qe.MDID12,&ss_qe.MDID13,&ss_qe.MDID14,&ss_qe.MDID15};
+	int *ch[15]={&ss_qe.CH,&ss_qe.CH2,&ss_qe.CH3,&ss_qe.CH4,&ss_qe.CH5,&ss_qe.CH6,&ss_qe.CH7,
+							&ss_qe.CH8,&ss_qe.CH9,&ss_qe.CH10,&ss_qe.CH11,&ss_qe.CH12,&ss_qe.CH13,&ss_qe.CH14,&ss_qe.CH15};
+	u8  *channel[15]={&action_qe.action_channel,&action_qe.action_channel2,&action_qe.action_channel3,
+							&action_qe.action_channel4,&action_qe.action_channel5,&action_qe.action_channel6,
+							&action_qe.action_channel7,&action_qe.action_channel8,&action_qe.action_channel9,
+							&action_qe.action_channel10,&action_qe.action_channel11,&action_qe.action_channel12,
+							&action_qe.action_channel13,&action_qe.action_channel14,&action_qe.action_channel15};
+	action_qe.action_channel_cnt = 0;
+	for(i = 0; i < 15; i++){
+		if(*(mdid[i])){
+			action_qe.action_channel_cnt++;
+			*(channel[i]) = (u8)((*(mdid[i]))<<4) | (u8)(*(ch[i]));
+			*(mdid[i]) = 0;
+			*(ch[i]) = 0;
+		}
+	}
+	
+}
+
+
+
 //接收到eSH qe时发送相应sicp action指令，0x51~0x55,0x56，本函数放入100ms定时中
 void sicp_qe_action_cmd(void)
 {
 	u8 i,j;
 	if(ack_qe){
 		ack_qe = 0;
-		if(ss_qe.MDID){//说明快速执行的是SLC或SPC
+		//if(ss_qe.MDID){//说明快速执行的是SLC或SPC
 			if((ss_qe.action[0] == 'D') && (ss_qe.action[1] == 'M')){
-				for(i = 0; i < 5;i++){
-					for(j = 0; j < 15;j++){
-						//查找是哪一个SC下的哪一个SLC，填入相应的message id
-						//if(strncmp(ss_qe.sepid,ss.sc[i].slc[j].deviceid,8)==0){
-						if(strncmp(ss_qe.sepid,ss.sc[i].deviceid,8)==0){
-							mymemcpy(action_qe.deviceid,ss.sc[i].slc[j].deviceid,8);
-							action_qe.message_id = i+100;
-							action_qe.mesh_id_H = (u8)((ss.sc[i].meshid&0xFF00)>>8);
-							action_qe.mesh_id_L = (u8)(ss.sc[i].meshid&0x00FF);
-							action_qe.action_channel = (u8)(ss_qe.MDID<<4) + ss_qe.CH;
-							action_qe.action_cmd = 0x51;//qe快速指令默认用Linear
-							action_qe.action_value = ss_qe.topos;
-							action_qe.action_ext = 0x1E;
-							send_action_message(&action_qe);
-							break;
-						}
+				if((ss_qe.action[2] == 0)){
+					for(i = 0; i < 5;i++){
+						//for(j = 0; j < 15;j++){
+							//查找是哪一个SC下的哪一个SLC，填入相应的message id
+							//if(strncmp(ss_qe.sepid,ss.sc[i].slc[j].deviceid,8)==0){
+							if(strncmp(ss_qe.sepid,ss.sc[i].deviceid,10)==0){
+								if(ss_qe.MDID == ss.sc[i].slc[j].MDID)	mymemcpy(action_qe.deviceid,ss.sc[i].slc[j].deviceid,10);
+								action_qe.message_id = i+100;
+								action_qe.mesh_id_H = (u8)((ss.sc[i].meshid&0xFF00)>>8);
+								action_qe.mesh_id_L = (u8)(ss.sc[i].meshid&0x00FF);
+								action_qe.action_channel = (u8)(ss_qe.MDID<<4) + ss_qe.CH;
+								action_qe.action_cmd = 0x51;//qe快速指令默认用Linear
+								action_qe.action_value = ss_qe.topos;
+								action_qe.action_ext = 0x1E;
+								send_action_message(&action_qe);
+								break;
+							}
+						//}
+					}
+				}
+				else if((ss_qe.action[2] == 'M')){//多模块多通道
+					for(i = 0; i < 5;i++){
+						//for(j = 0; j < 15;j++){
+							//查找是哪一个SC下的哪一个SLC，填入相应的message id
+							//if(strncmp(ss_qe.sepid,ss.sc[i].slc[j].deviceid,8)==0){
+							if(strncmp(ss_qe.sepid,ss.sc[i].deviceid,10)==0){
+								action_qe.message_id = i+105;
+								action_qe.mesh_id_H = (u8)((ss.sc[i].meshid&0xFF00)>>8);
+								action_qe.mesh_id_L = (u8)(ss.sc[i].meshid&0x00FF);
+								action_qe.action_cmd = 0x57;//多通道
+								calc_multi_action_qe();
+								action_qe.action_value = ss_qe.topos;
+								action_qe.action_ext = ss_qe.duration;
+								send_action_message(&action_qe);
+							}
+						//}
 					}
 				}
 			}
 			else if((ss_qe.action[0] == 'W') && (ss_qe.action[1] == 'P')){
-				for(i = 0; i < 5;i++){
-					for(j = 0; j < 15;j++){
-						//查找是哪一个SC下的哪一个SPC，填入相应的message id
-						//if(strncmp(ss_qe.sepid,ss.sc[i].spc[j].deviceid,8)==0){
-						if(strncmp(ss_qe.sepid,ss.sc[i].deviceid,8)==0){
-							mymemcpy(action_qe.deviceid,ss.sc[i].spc[j].deviceid,8);
-							action_qe.message_id = i+100;
-							action_qe.mesh_id_H = (u8)((ss.sc[i].meshid&0xFF00)>>8);
-							action_qe.mesh_id_L = (u8)(ss.sc[i].meshid&0x00FF);
-							action_qe.action_channel = (u8)(ss_qe.MDID<<4) + ss_qe.CH;
-							action_qe.action_cmd = 0x55;//qe快速指令默认用Linear
-							action_qe.action_value = ss_qe.topos;
-							action_qe.action_ext = 0;
-							send_action_message(&action_qe);
-							break;
-						}
+				if(ss_qe.action[2] == 0){
+					for(i = 0; i < 5;i++){
+						//for(j = 0; j < 15;j++){
+							//查找是哪一个SC下的哪一个SPC，填入相应的message id
+							//if(strncmp(ss_qe.sepid,ss.sc[i].spc[j].deviceid,8)==0){
+							if(strncmp(ss_qe.sepid,ss.sc[i].deviceid,10)==0){
+								mymemcpy(action_qe.deviceid,ss.sc[i].spc[j].deviceid,10);
+								action_qe.message_id = i+100;
+								action_qe.mesh_id_H = (u8)((ss.sc[i].meshid&0xFF00)>>8);
+								action_qe.mesh_id_L = (u8)(ss.sc[i].meshid&0x00FF);
+								action_qe.action_channel = (u8)(ss_qe.MDID<<4) + ss_qe.CH;
+								action_qe.action_cmd = 0x55;//qe快速指令默认用Linear
+								action_qe.action_value = ss_qe.topos;
+								action_qe.action_ext = 0;
+								send_action_message(&action_qe);
+								break;
+							}
+						//}
+					}
+				}
+				else if(ss_qe.action[2] == 'M') {
+					for(i = 0; i < 5;i++){
+						//for(j = 0; j < 15;j++){
+							//查找是哪一个SC下的哪一个SPC，填入相应的message id
+							//if(strncmp(ss_qe.sepid,ss.sc[i].slc[j].deviceid,8)==0){
+							if(strncmp(ss_qe.sepid,ss.sc[i].deviceid,10)==0){
+								action_qe.message_id = i+105;
+								action_qe.mesh_id_H = (u8)((ss.sc[i].meshid&0xFF00)>>8);
+								action_qe.mesh_id_L = (u8)(ss.sc[i].meshid&0x00FF);
+								calc_multi_action_qe();
+								action_qe.action_cmd = 0x58;//多通道
+								action_qe.action_value = ss_qe.topos;
+								action_qe.action_ext = 0x00;
+								send_action_message(&action_qe);
+							}
+						//}
 					}
 				}
 			}
-		}
+		//}
 		if((ss_qe.action[0] == 'C') && (ss_qe.action[1] == 'P')){//快速执行的是ST
 			for(i = 0; i < 20; i++){
 				//查找是哪一个ST，填入相应的message id
-				if(strncmp(ss_qe.sepid,ss.st[i].deviceid,8)==0){
-					mymemcpy(action_qe.deviceid,ss.st[i].deviceid,8);
+				if(strncmp(ss_qe.sepid,ss.st[i].deviceid,10)==0){
+					mymemcpy(action_qe.deviceid,ss.st[i].deviceid,10);
 					action_qe.message_id = i+80;
 					action_qe.mesh_id_H = (u8)((ss.st[i].meshid&0xFF00)>>8);
 					action_qe.mesh_id_L = (u8)(ss.st[i].meshid&0x00FF);
@@ -1157,6 +1314,7 @@ void sicp_qe_action_cmd(void)
 				}
 			}
 		}
+		memset(ss_qe.action,0,4);
 	}
 }
 
@@ -1164,7 +1322,13 @@ void sicp_qe_action_cmd(void)
 
 void send_action_message(ACTION *ac)
 {
-	SICP_Message action_cmd;
+		u8 index = 0,cnt = 0;
+		SICP_Message action_cmd;
+		u8 *channel[15] = {&action_qe.action_channel,&action_qe.action_channel2,&action_qe.action_channel3,
+							&action_qe.action_channel4,&action_qe.action_channel5,&action_qe.action_channel6,
+							&action_qe.action_channel7,&action_qe.action_channel8,&action_qe.action_channel9,
+							&action_qe.action_channel10,&action_qe.action_channel11,&action_qe.action_channel12,
+							&action_qe.action_channel13,&action_qe.action_channel14,&action_qe.action_channel15};
 		action_cmd.frame_h1 = 0xEE;
 		action_cmd.frame_h2 = 0xEE;
 		action_cmd.message_id = ac->message_id;
@@ -1182,13 +1346,34 @@ void send_action_message(ACTION *ac)
 				action_cmd.payload[2] = ac->action_value;
 				action_cmd.payload[3] = ac->action_ext;
 				//action_cmd.payload[4] = '\0';
+				sicp_send_message(&action_cmd,4);
 				break;
 			case 0x57:
+				action_cmd.payload[0] = ac->action_cmd;
+				action_cmd.payload[1] = ac->action_channel_cnt;
+				index += 2;
+				while(ac->action_channel_cnt--){
+					action_cmd.payload[index++] = *(channel[cnt++]);
+				}
+				action_cmd.payload[index++] = ac->action_value;
+				action_cmd.payload[index++] = ac->action_ext;
+				sicp_send_message(&action_cmd,index);
+				break;
+			case 0x58:
+				action_cmd.payload[0] = ac->action_cmd;
+				action_cmd.payload[1] = ac->action_channel_cnt;
+				index += 2;
+				while(ac->action_channel_cnt--){
+					action_cmd.payload[index++] = *(channel[cnt++]);
+				}
+				action_cmd.payload[index++] = ac->action_value;
+				action_cmd.payload[index++] = ac->action_ext;
+				sicp_send_message(&action_cmd,index);
 				break;
 			default:
 				break;
 		}
-		sicp_send_message(&action_cmd,4);
+		
 }
 
 //接收到eSH action_perform时发送相应sicp action指令，0x51~0x55，本函数放入100ms定时中

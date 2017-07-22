@@ -11,7 +11,6 @@
 
 #include "sensors.h"
 
-int sensor_data[3];
 
 
 
@@ -20,8 +19,6 @@ int sensor_data[3];
 #define PYD1798_OUT_HIGH() 	(GPIOA->BSRR = 0x00000002) 
 #define PYD1798_IN_READ()  (GPIOA->IDR  & 0x0002)    
 
-
-int smokeModule_value = 0;
 
 #define smokeModule_IN_READ()  (GPIOA->IDR  & 0x0020) 
 
@@ -141,7 +138,7 @@ void PM25_NVIC_config(void)
 void EXTI4_IRQHandler(void)
 {
 	
-	printf("\n EXTI4_IRQHandler");
+	sensors_printf("\n EXTI4_IRQHandler");
 	   
 	EXTI_ClearITPendingBit(EXTI_Line4);	//清除 LINE 上的中断标志位
 	
@@ -206,6 +203,68 @@ void PYD1798_pin_in(void)
 
 
 /*-----------------------------------------------------------------------
+	判断是否有人体移动
+	连续10次数据递增或递减表示有人体移动，保持2s
+	即连续2s内没有检测到一次连续10次递增或递减则清楚人体移动标志
+------------------------------------------------------------------------*/
+void remove_check(int chl)
+{
+	static int old_chl = 0;		/* 前一次的chl保存  */	
+	static int dir = 0;			/* 前一比较是递增 1，还是递减 0  */
+	static int count = 0;		/* 连续递增或递减次数  */
+	static int uncount = 0;		/* 连续多少次没有检测到人体移动  */
+
+
+	if(dir){					/* 前一次递增 */
+		if(chl > old_chl){		/* 递增 */
+			count++;
+		}else{
+			if(chl < old_chl){	/* 递减 */
+				count = 1;
+				dir = 0;
+			}else{
+				count = 0;	
+			}
+		}
+
+	}else{
+
+		if(chl < old_chl){		/* 递减 */
+			count++;
+		}else{
+			if(chl > old_chl){	/* 递增 */
+				count = 1;
+				dir = 1;
+			}else{
+				count = 0;	
+			}
+		}
+
+	}
+
+	old_chl = chl;				/* 保存数据 */
+
+	
+	if(count >= 10){					/* 连续10次以上递增或递减 */
+		sensors_value.removeFlag = 1;	/* 检测到人体移动 */
+		uncount = 0;	
+	}else{
+		uncount++;
+	}
+
+	if((sensors_value.removeFlag == 1) && uncount > 200){	/* 连续200次没有检测到人体移动 */
+		sensors_value.removeFlag = 0;	/* 取消人体移动标志 */
+
+	}
+
+
+}
+
+
+
+
+
+/*-----------------------------------------------------------------------
 	PYD1798
 ------------------------------------------------------------------------*/
 void PYD1798_readdigipyro(void)
@@ -241,14 +300,15 @@ void PYD1798_readdigipyro(void)
 		
 	}
 	
-//	printf(" [%d](%d)(%d)", PIRval[0], PIRval[1], (PIRval[1] -6700)/80 + 25);
-	//printf(" %d", PIRval[0]);
-	sensor_data[0] = PIRval[0];
+//	sensors_printf(" [%d](%d)(%d)", PIRval[0], PIRval[1], (PIRval[1] -6700)/80 + 25);
+//	sensors_printf(" %d", PIRval[0]);
 
 	PYD1798_OUT_LOW();  // Set DL = Low
 	delay_1us(1);	
 
 	PYD1798_pin_in(); 	 // Configure DL as Input
+	
+	remove_check(PIRval[0]);	/* 检测人体移动 */
 
 }
 
@@ -275,10 +335,10 @@ void PYD1798_check(void)
 void smokeModule_gpio_init(void)
 {
 
-	RCC->APB2ENR |= 0x00000004;  // I/O port A clock enabled
+	RCC->APB2ENR |= 0x00000004;  	// I/O port A clock enabled
 
-	GPIOA->CRL &= 0xFF0FFFFF;  // set PA5 INPUT
-	GPIOA->CRL |= 0x00800000;  // 
+	GPIOA->CRL &= 0xFF0FFFFF;  	// set PA5 INPUT
+	GPIOA->CRL |= 0x00800000;  	// 
 
 }
 
@@ -289,9 +349,9 @@ void smokeModule_gpio_init(void)
 void smokeModule_check(void)
 {	
 	if(smokeModule_IN_READ()){		
-		smokeModule_value = 1;		
+		sensors_value.smokeModule_value = 1;		
 	}else{	
-		smokeModule_value = 0;		
+		sensors_value.smokeModule_value = 0;		
 	}
 
 }
