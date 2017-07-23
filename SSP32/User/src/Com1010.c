@@ -344,6 +344,34 @@ void rev_anaylze(void)
 				else if((rev_message_id >= 140) && (rev_message_id < 145)){//收到sc alert cmd回复
 					
 				}
+				else if(rev_message_id == 0x9F){//SC收到ST action指令，回复结果给SS，SS需回复相应SC的device status给eSH
+					if(sicp_buf[7] == 0x05){//执行成功
+						//找到相应的sc
+						for(i = 0;i < 5;i++){
+							if(ss.sc[i].meshid == rev_mesh_id){
+								for(j = 0; j < 15;j++){
+									if(ss.sc[i].slc[j].MDID == sicp_buf[8]){
+										ss.sc[i].slc[j].ch1_status = sicp_buf[9];
+										ss.sc[i].slc[j].ch2_status = sicp_buf[10];
+										ss.sc[i].slc[j].ch3_status = sicp_buf[11];
+										ss.sc[i].slc[j].ch4_status = sicp_buf[12];
+										send_device_status(ss.sc[i].slc[j].deviceid);
+										break_flag = 1;break;	
+									}
+									if(ss.sc[i].spc[j].MDID == sicp_buf[8]){
+										ss.sc[i].spc[j].ch1_status = sicp_buf[9];
+										ss.sc[i].spc[j].ch2_status = sicp_buf[10];
+										ss.sc[i].spc[j].ch3_status = sicp_buf[11];
+										ss.sc[i].spc[j].ch4_status = sicp_buf[12];
+										send_device_status(ss.sc[i].spc[j].deviceid);
+										break_flag = 1;break;	
+									}
+								}
+							}
+							if(break_flag)	{break_flag = 0;break;}
+						}
+					}
+				}
 				break;
 			case 0x0A://故障汇报
 				deal_mal_cmd();
@@ -364,10 +392,13 @@ void rev_anaylze(void)
 			case 0x35://ST汇报触摸按键
 				for(i = 0; i < 20; i++){
 					if(ss.st[i].meshid == rev_mesh_id){
-						if(sicp_buf[7] == 1)	ss.st[i].ch1_status = sicp_buf[8];
-						else if(sicp_buf[7] == 2)	ss.st[i].ch2_status = sicp_buf[8];
-						else if(sicp_buf[7] == 3)	ss.st[i].ch3_status = sicp_buf[8];
+						if((sicp_buf[7] & 0x01) == 0x01)	ss.st[i].ch1_status = sicp_buf[8];
+						if((sicp_buf[7] & 0x02) == 0x02)	ss.st[i].ch2_status = sicp_buf[8];
+						if((sicp_buf[7] & 0x04) == 0x04)	ss.st[i].ch3_status = sicp_buf[8];
 						sicp_receipt(0x02,rev_message_id,rev_mesh_id);
+						ss.st[i].status._flag_bit.bit2 = 1;
+						rev_action_fail_cnt++;
+						rev_action_done2 = 1;
 						break;
 					}
 				}
@@ -379,13 +410,12 @@ void rev_anaylze(void)
 					case 0x51://ST发来控制DM的异步通知
 						for(i = 0; i < 5; i++){//找到相应的sc
 							if(ss.sc[i].meshid == (u16)((sicp_buf[10]<<8) | sicp_buf[11])){
-								
 								for(j = 0; j < 15;j++){
 									if(ss.sc[i].slc[j].MDID == ((sicp_buf[13]&0xf0)>>4)){
 										mymemcpy(ss_rt.sepid2,ss.sc[i].deviceid,10);
 										mymemcpy(ss_rt.sepid,ss.sc[i].slc[j].deviceid,10);
 										ss_rt.MD = ss.sc[i].slc[j].MDID;
-										ss_rt.gt.action[0] = 'D';ss_rt.gt.action[0] = 'M';
+										ss_rt.gt.action[0] = 'D';ss_rt.gt.action[1] = 'M';
 										ss_rt.gt.ch = sicp_buf[13];
 										ss_rt.gt.topos[0] = hex2ascii(sicp_buf[14]/10);ss_rt.gt.topos[1] = hex2ascii(sicp_buf[14]%10);
 										ss_rt.gt.option_duration = sicp_buf[15]/10;
@@ -415,13 +445,12 @@ void rev_anaylze(void)
 					case 0x55:
 						for(i = 0; i < 5; i++){//找到相应的sc
 							if(ss.sc[i].meshid == (u16)((sicp_buf[10]<<8) | sicp_buf[11])){
-								
 								for(j = 0; j < 15;j++){
 									if(ss.sc[i].spc[j].MDID == ((sicp_buf[13]&0xf0)>>4)){
 										mymemcpy(ss_rt.sepid2,ss.sc[i].deviceid,10);
 										mymemcpy(ss_rt.sepid,ss.sc[i].spc[j].deviceid,10);
 										ss_rt.MD = ss.sc[i].spc[j].MDID;
-										ss_rt.gt.action[0] = 'W';ss_rt.gt.action[0] = 'P';
+										ss_rt.gt.action[0] = 'W';ss_rt.gt.action[1] = 'P';
 										ss_rt.gt.ch = sicp_buf[13];
 										ss_rt.gt.topos[0] = hex2ascii(sicp_buf[14]/10);ss_rt.gt.topos[1] = hex2ascii(sicp_buf[14]%10);
 										ss_rt.gt.option_duration = sicp_buf[15]/10;

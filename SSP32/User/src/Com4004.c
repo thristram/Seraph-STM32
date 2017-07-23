@@ -1257,8 +1257,43 @@ void deal_config_strategy_htsp(u8 *buf)//buf是topic内容
 	}
 	
 }
-
-
+//主动发送decive_status，在接收到ST action控制SC，SC回复给SS后
+void send_device_status(u8 *deviceid)	//传入deviceid是SLC或SPC的device id
+{
+	u8 i,j;
+	u8 doule_break = 0;
+	cJSON *cs,*sub_cs;
+	char *payload;
+	char *topic = "/device/status";
+	cs = cJSON_CreateObject();
+	for(i = 0;i < 5;i++){
+		for(j = 0;j < 15;j++){
+			if(strncmp(deviceid,ss.sc[i].slc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
+				cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
+				cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
+				cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
+				cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
+				cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
+				doule_break = 1;
+				break;
+			}
+			if(strncmp(deviceid,ss.sc[i].spc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
+				cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
+				cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
+				cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
+				cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
+				cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
+				doule_break = 1;
+				break;
+			}
+		}
+		if(doule_break)	{doule_break = 0;break;}
+	}
+	payload = cJSON_PrintUnformatted(cs);
+	if(payload)	cJSON_Delete(cs);
+	init_tx_message(0x43,0x01,14,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
+	send_message(&Txto4004);
+}
 
 //解析decive_status命令
 void deal_device_status(u8 *buf)//buf是topic内容
@@ -1271,9 +1306,9 @@ void deal_device_status(u8 *buf)//buf是topic内容
 	u8 type;
 	u8 buflen;
 	buflen = strlen(buf);
-	if(buflen <= 14)												type = 3;		//SC下所有SLC和SPC
-	else if((buflen > 14)&&(buflen <= 31))		type = 1;		//针对某个SLC或SPC所有通道
-	else 																		type = 2;		//针对某个SLC或SP某个通道
+	if(buflen == 14)												type = 3;		//SC下所有SLC和SPC
+	else if(buflen == 31)										type = 1;		//针对某个SLC或SPC所有通道
+	else if(buflen > 31)										type = 2;		//针对某个SLC或SP某个通道
 	if(type == 1){
 		mymemcpy(ss_des.sepid,(buf+21),10);
 		if(ss_des.sepid[0]){
@@ -1316,6 +1351,7 @@ void deal_device_status(u8 *buf)//buf是topic内容
 		mymemcpy(ss_des.ch,(buf+35),2);
 		if((ss_des.sepid[0]) && (ss_des.ch[0]))	{
 			ack_des3 = 1;
+			ss_des.ch[0] = ss_des.ch[0] - '0';
 			cs = cJSON_CreateObject();
 			if(ack_des3){
 				ack_des3 = 0;
@@ -1323,19 +1359,19 @@ void deal_device_status(u8 *buf)//buf是topic内容
 					for(j = 0;j < 15;j++){
 						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
 							cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
-							if(ss_des.ch[1] == '1')	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
-							if(ss_des.ch[1] == '2')	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
-							if(ss_des.ch[1] == '3')	cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
-							if(ss_des.ch[1] == '4')	cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
+							if((ss_des.ch[0] & 0x01) == 0x01)	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
+							if((ss_des.ch[0] & 0x02) == 0x02)	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
+							if((ss_des.ch[0] & 0x04) == 0x04)	cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
+							if((ss_des.ch[0] & 0x08) == 0x08)	cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
 							doule_break = 1;
 							break;
 						}
 						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
 							cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
-							if(ss_des.ch[1] == '1')	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
-							if(ss_des.ch[1] == '2')	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
-							if(ss_des.ch[1] == '3')	cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
-							if(ss_des.ch[1] == '4')	cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
+							if((ss_des.ch[0] & 0x01) == 0x01)	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
+							if((ss_des.ch[0] & 0x02) == 0x02)	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
+							if((ss_des.ch[0] & 0x04) == 0x04)	cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
+							if((ss_des.ch[0] & 0x08) == 0x08)	cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
 							doule_break = 1;
 							break;
 						}
@@ -1353,14 +1389,14 @@ void deal_device_status(u8 *buf)//buf是topic内容
 		cs = cJSON_CreateObject();
 		for(i = 0;i < 5;i++){
 			for(j = 0;j < 15;j++){
-				if((!ss.sc[i].slc[j].deviceid[0]) && (ss.sc[i].slc[j].meshid)){//device id和mesh id不为空才发送状态
+				if(ss.sc[i].slc[j].deviceid[0]){//device id和mesh id不为空才发送状态
 					cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
 					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
 					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
 				}
-				if((!ss.sc[i].spc[j].deviceid[0]) && (ss.sc[i].spc[j].meshid)){//device id和mesh id不为空才发送状态
+				if(ss.sc[i].spc[j].deviceid[0]){//device id和mesh id不为空才发送状态
 					cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
 					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
 					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
@@ -1456,8 +1492,8 @@ void deal_qe(u8 *buf)//buf是topic内容
 				}
 			}
 			else if(strncmp(data5,"CP",2) == 0){
-				if(strncmp(data6,"CH",2) == 0){
-					ss_qe.CH = data7[1] - '0';
+				if(strncmp(data6,"CH",1) == 0){
+					ss_qe.CH = data7[0] - '0';
 					if(strncmp(data8,"topos",5) == 0){
 						if((data9[0] ==  'F')&&(data9[0] == 'F'))			ss_qe.topos = 0x64;
 						else																					ss_qe.topos = (int)(data9[0] - '0')*10 + (int)(data9[1] - '0');

@@ -54,19 +54,16 @@ void system_init(void)
 			}
 		}
 	}
-	ss.sc[0].deviceid[0] = 'S';
-	ss.sc[0].deviceid[1] = 'C';
-	ss.sc[0].deviceid[2] = '0';
-	ss.sc[0].deviceid[3] = '9';
-	ss.sc[0].deviceid[4] = '8';
-	ss.sc[0].deviceid[5] = 'A';
-	ss.sc[0].deviceid[6] = '7';
-	ss.sc[0].deviceid[7] = '6';
-	ss.sc[0].deviceid[8] = '1';
-	ss.sc[0].deviceid[9] = '2';
+	/*
+	mymemcpy(ss.sc[0].deviceid,"SC098A7612",10);				//for test
+	mymemcpy(ss.st[0].deviceid,"STAA55AB70",10);				//for test
+	mymemcpy(ss.sc[0].slc[0].deviceid,"SLAA55AB57",10);	//for test
+	mymemcpy(ss.sc[0].spc[0].deviceid,"SPAA55AB58",10);	//for test
+	mymemcpy(ss.sc[0].spc[1].deviceid,"SPAA55AB59",10); //for test
 	ss.sc[0].meshid = 0x8010;   //for test
+	ss.st[0].meshid = 0x8020;   //for test
 	ss.sc[0].spc[0].MDID = 1;   //for test
-	ss.sc[0].spc[1].MDID = 2;   //for test
+	ss.sc[0].spc[1].MDID = 2;   //for test*/
 	//confit st结构体初始化
 	for(i = 0; i < 20; i++)	memset(ss_cst[i].target_id,0,12);
 	//device status

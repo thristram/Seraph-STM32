@@ -9,7 +9,6 @@
 #include "sensors.h"
 
 
-
 GP2Y1023_value_t GP2Y1023_value;
 
 
@@ -64,7 +63,7 @@ void GP2Y1023_timer_config(void)
 	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
 	TIM_ICInitTypeDef  TIM_ICInitStructure;
 
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+  	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
 
 	TIM_DeInit(TIM3); //初始化TIM3为缺省值 0
 
@@ -99,6 +98,54 @@ void GP2Y1023_timer_config(void)
 }
 
 
+
+
+
+/*-----------------------------------------------------------------------
+	粉尘浓度平滑
+	每存储10个数据之后才计算浓度值
+	前面10个浓度的值的和保存在out_us_old中；
+------------------------------------------------------------------------*/
+void pm25_density_handler(int output_us)
+{
+	static int out_us[16] = {0};
+	static int out_us_old = 0;
+	static int out_us_cnt = 0;
+	int i;
+
+
+	if(out_us_cnt >= 10){
+
+		for(i=1; i<10; i++){				/* 10 个数据的和 */
+			out_us[0] += out_us[i];
+		}
+
+		if(out_us_old){
+			
+			out_us[0] = (out_us_old + out_us[0]) / 2 ;		/* 前后20个数据的*/
+
+		}
+		
+		sensors_value.pm25_density = (out_us[0] / 10 + 1 - OUTPUT_AT_NO_DUST) / OUTPUT_SENSITIVITY_K;
+		sensors_printf("\n pm25:%lf", sensors_value.pm25_density);
+
+		out_us_old = out_us[0];
+		
+		out_us[0] = output_us;
+		out_us_cnt = 1;		
+		
+	}else{
+
+		out_us[out_us_cnt] = output_us;
+		out_us_cnt++;
+
+	}
+
+
+}
+
+
+
 /*-----------------------------------------------------------------------
 	4、中断服务函数
 ------------------------------------------------------------------------*/
@@ -114,11 +161,21 @@ void TIM3_IRQHandler(void)
 		
 
 		GP2Y1023_value.dutyCycle = (float)GP2Y1023_value.IC1Value / GP2Y1023_value.IC2Value; //读取IC1捕获寄存器的值，并计算占空比
-		GP2Y1023_value.frequency = GP2Y1023_value.timerFreq / GP2Y1023_value.IC2Value; //计算PWM频率。
+		GP2Y1023_value.frequency = (float)GP2Y1023_value.timerFreq / GP2Y1023_value.IC2Value; //计算PWM频率。
+		GP2Y1023_value.output_us = GP2Y1023_value.dutyCycle*1000000/GP2Y1023_value.frequency;
 
-//		printf("\n GP2Y1023 IC2Value:%d	IC1Value:%d	dutyCycle:%lf	frequency:%d", 
-//			GP2Y1023_value.IC2Value, TIM_GetCapture1(TIM3), GP2Y1023_value.dutyCycle, GP2Y1023_value.frequency);
 
+//		sensors_printf("\n GP2Y1023 IC2Value:%d	IC1Value:%d	dutyCycle:%lf	frequency:%lf output_us:%d", 
+//			GP2Y1023_value.IC2Value, TIM_GetCapture1(TIM3), GP2Y1023_value.dutyCycle, GP2Y1023_value.frequency, GP2Y1023_value.output_us);
+
+		/* 取值范围 */
+		if(GP2Y1023_value.output_us < OUTPUT_AT_NO_DUST){
+			GP2Y1023_value.output_us = OUTPUT_AT_NO_DUST;
+		}	
+		if(GP2Y1023_value.output_us > OUTPUT_AT_MAX_DUST){
+			GP2Y1023_value.output_us = OUTPUT_AT_MAX_DUST;
+		}
+		pm25_density_handler(GP2Y1023_value.output_us);
 
 	}else{
 	
@@ -147,7 +204,7 @@ void GP2Y1023_pwm_init(void)
 	RCC_GetClocksFreq(&RCC_Clocks);  
 	
 	GP2Y1023_value.timerFreq = RCC_Clocks.SYSCLK_Frequency / 720;
-//	printf("\n RCC_Clocks HCLK:%dHz SYSCLK:%dHz GP2Y1023_value.timerFreq:%dHz", RCC_Clocks.HCLK_Frequency, 
+//	sensors_printf("\n RCC_Clocks HCLK:%dHz SYSCLK:%dHz GP2Y1023_value.timerFreq:%dHz", RCC_Clocks.HCLK_Frequency, 
 //			RCC_Clocks.SYSCLK_Frequency, GP2Y1023_value.timerFreq);
 //	
 }

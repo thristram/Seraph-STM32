@@ -27,8 +27,6 @@
 
 
 
-extern int smokeModule_value;
-
 
 
 
@@ -44,6 +42,7 @@ void PYD1798_readdigipyro(void);
 void PYD1798_check(void);
 
 
+void smokeModule_gpio_init(void);
 
 void smokeModule_check(void);
 

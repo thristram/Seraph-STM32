@@ -587,6 +587,7 @@ COM4004_EXT void deal_config_st(u8 *buf);
 COM4004_EXT void deal_config_stragy_hpst(u8 *buf);
 COM4004_EXT void deal_config_strategy_htsp(u8 *buf);//buf是topic内容
 COM4004_EXT void deal_device_status(u8 *buf);
+COM4004_EXT void send_device_status(u8 *deviceid);	//传入deviceid是SLC或SPC的device id
 COM4004_EXT void deal_qe(u8 *buf);
 COM4004_EXT void dela_alarm(u8 *buf);
 

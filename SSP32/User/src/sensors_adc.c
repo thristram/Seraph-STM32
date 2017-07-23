@@ -33,8 +33,8 @@ void ADC1_GPIO_Config(void)
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1 | RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOA, ENABLE);
 
 	
-	/* Configure PC.00/01/02	as analog input */
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_2;
+	/* Configure PC1	as analog input */
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AIN;		//模拟输入引脚
 	GPIO_Init(GPIOC, &GPIO_InitStructure);				
 
@@ -72,7 +72,7 @@ void ADC1_Mode_Config(void)
 	//ADC1,ADC通道x,规则采样顺序值为y,采样时间为239.5周期
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_0,  1, ADC_SampleTime_239Cycles5 );
 	ADC_RegularChannelConfig(ADC1, ADC_Channel_11, 2, ADC_SampleTime_239Cycles5 );
-	ADC_RegularChannelConfig(ADC1, ADC_Channel_12, 3, ADC_SampleTime_239Cycles5 );
+//	ADC_RegularChannelConfig(ADC1, ADC_Channel_12, 3, ADC_SampleTime_239Cycles5 );
 
 	ADC_DMACmd(ADC1, ENABLE); 	/* Enable ADC1 DMA */ 
 	

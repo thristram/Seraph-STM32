@@ -41,6 +41,10 @@ malfuncrtion command:
 Gateway	Mesh	ID	Broadcasting:
 0x9E 158
 
+SS接收到qe CP命令后，发送0x56命令给ST，ST发送action命令给SC以控制SLC或SPC，此时固定message id为0x9F。并且0x08异步通知SS
+SLC或SLC调节完成后SC发送AA 05给SS，此时的message id就是0x9F。
+SS接收到后，根据异步通知得相应的SC，并发送device status(包括SLC和SPC状态)给eSH
+0x9F
 
 *********************************************************/
 

@@ -169,14 +169,14 @@ void CO2_usart3_cmd(uint8_t which)
 
 /*-----------------------------------------------------------------------
 	CO2发送命令
-	每100ms执行一次
+	每100ms执行一次，不可随意修改周期
 ------------------------------------------------------------------------*/
 void CO2_usart3_send(void)
 {
 	uint8_t which = 0;
 
 	CO2_uart.readCtrl++;
-	if(CO2_uart.readCtrl >= 20){	/* 1s */
+	if(CO2_uart.readCtrl >= 10){	/* 1s */
 		CO2_uart.readCtrl = 0;
 		CO2_uart.readFlag = 1;
 	}
@@ -224,6 +224,7 @@ void CO2_usart3_send(void)
 /*-----------------------------------------------------------------------
 	等待一定的延迟20ms
 	每2ms执行一次
+	暂不适用
 ------------------------------------------------------------------------*/
 void CO2_usart3_send_finish_confirm(void)
 {
@@ -301,11 +302,12 @@ void USART3_IRQHandler(void)
 
 			if(CO2_uart.rxBuf[1] == 0x86){		/* 读取数据 */
 				CO2_uart.readValue = CO2_uart.rxBuf[2] * 256 + CO2_uart.rxBuf[3];
-//				printf("\n CO2_uart.readValue:%d ppm", CO2_uart.readValue);
+				sensors_value.co2_density = (int)CO2_uart.readValue;
+//				sensors_printf("\n CO2_uart.readValue:%d ppm", CO2_uart.readValue);
 			}
 
 
-//			printf("\n %02x %02x %02x %02x %02x %02x %02x %02x %02x ",
+//			sensors_printf("\n %02x %02x %02x %02x %02x %02x %02x %02x %02x ",
 //				CO2_uart.rxBuf[0], CO2_uart.rxBuf[1], CO2_uart.rxBuf[2], CO2_uart.rxBuf[3],
 //				CO2_uart.rxBuf[4], CO2_uart.rxBuf[5], CO2_uart.rxBuf[6], CO2_uart.rxBuf[7],
 //				CO2_uart.rxBuf[8]);

@@ -14,7 +14,7 @@
 
 
 
-#define ADC1_SCAN_CHANNEL_NUM	3
+#define ADC1_SCAN_CHANNEL_NUM	2
 
 
 extern __IO uint16_t ADC1_ConvertedValue[ADC1_SCAN_CHANNEL_NUM];
