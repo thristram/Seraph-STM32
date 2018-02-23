@@ -19,6 +19,8 @@
 "..\obj\sensors_sht3x.o"
 "..\obj\sensors_timer.o"
 "..\obj\sensors_uart.o"
+"..\obj\key_string.o"
+"..\obj\ir.o"
 "..\obj\misc.o"
 "..\obj\stm32f10x_adc.o"
 "..\obj\stm32f10x_bkp.o"
@@ -46,7 +48,6 @@
 "..\obj\system_stm32f10x.o"
 "..\obj\startup_stm32f10x_hd.o"
 --library_type=microlib --strict --scatter "..\OBJ\ssp32.sct"
-
---libpath "C:\Keil\ARM\ARMCC\lib" --summary_stderr --info summarysizes --map --xref --callgraph --symbols
+--summary_stderr --info summarysizes --map --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers
 --list ".\ssp32.map" -o ..\OBJ\ssp32.axf

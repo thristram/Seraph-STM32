@@ -3,100 +3,58 @@
 <pre>
 <h1>礦ision Build Log</h1>
 <h2>Project:</h2>
-D:\20170625\SSP32\MDK\ssp32.uvproj
-Project File Date:  07/21/2017
+D:\fyl\wp\SSP32\MDK\ssp32.uvproj
+Project File Date:  10/31/2017
 
 <h2>Output:</h2>
 Build target 'Target 1'
-compiling Com4004.c...
-..\User\src\Com4004.c(11): warning:  #1293-D: assignment in condition
-        while(!(ret=(*(unsigned char *)str2 - *(unsigned char *)str1)&&*str2))
-..\User\src\Com4004.c(62): warning:  #167-D: argument of type "char *" is incompatible with parameter of type "u8 *"
-                        Usart1_Send(uartTxSLHead->data,uartTxSLHead->len); //uartTxSLHead->haswrite在中断中处理
-..\User\src\Com4004.c(158): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                if (strncmp(temp_topicbuf,"/actions/perform",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(166): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if (strncmp(temp_topicbuf,"/config/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(170): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/actions/refresh",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(175): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/actions/backlight",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(181): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/data/sync",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(186): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/data/recent",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(190): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/config/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(197): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/data/ir",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(204): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/device/list",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(209): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/config/mesh",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(214): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/config/st",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(219): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/device/status",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(226): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/device/info/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(233): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/config/strategy/hpst",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-..\User\src\Com4004.c(241): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                if(strncmp(temp_topicbuf,"/actions/refresh",15) == 0)
-..\User\src\Com4004.c(245): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/data/sync",10) == 0)
-..\User\src\Com4004.c(250): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/config/ss",10) == 0)
-..\User\src\Com4004.c(255): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/device/status",14) == 0)
-..\User\src\Com4004.c(270): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/alarm",6) == 0)//alarm指令
-..\User\src\Com4004.c(275): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                else if(strncmp(temp_topicbuf,"/config/strategy/htsp",21) == 0)
-..\User\src\Com4004.c(1177): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-        u8 len = (u8)strlen(buf);
-..\User\src\Com4004.c(1271): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                        if(strncmp(deviceid,ss.sc[i].slc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
-..\User\src\Com4004.c(1280): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                        if(strncmp(deviceid,ss.sc[i].spc[j].deviceid,10) == 0){//找到与ss_des.sepid对应的slc
-..\User\src\Com4004.c(1308): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-        buflen = strlen(buf);
-..\User\src\Com4004.c(1445): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-        for(i = 0; i < strlen(buf);i++){
-..\User\src\Com4004.c(1454): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-        if(cnt == 6)    mymemcpy(data7,(buf+index[6]+1),strlen(buf)-index[6]-1);
-..\User\src\Com4004.c(1458): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-        if(cnt == 9)    mymemcpy(data9,(buf+index[8]+1),strlen(buf)-index[8]-1);
-..\User\src\Com4004.c(1461): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                if(index[10])   {mymemcpy(data10,(buf+index[9]+1),index[10]-index[9]-1);mymemcpy(data11,(buf+index[10]+1),strlen(buf)-index[10]-1);}
-..\User\src\Com4004.c(2003): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-        padload_len = strlen(buf);
-..\User\src\Com4004.c(2011): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
-                padload_len += strlen(tx->tx_var_header.topic) + 2;//2是topic length的长度
-..\User\src\Com4004.c(2105): warning:  #167-D: argument of type "char *" is incompatible with parameter of type "u8 *"
-        calc_send_r_length(payload,&Txto4004);
-..\User\src\Com4004.c(2178): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
-        addNodeToUartTxSLLast(temp_send_buf,txlen);
-..\User\src\Com4004.c(2201): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
-        addNodeToUartTxSLLast(send_buf,(r_length + 2));
-..\User\src\Com4004.c(2212): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *"
-        addNodeToUartTxSLLast(send_buf,2);
-..\User\src\Com4004.c(2395): warning:  #177-D: variable "i" was declared but never referenced
-        int i,j;
-..\User\src\Com4004.c(2395): warning:  #177-D: variable "j" was declared but never referenced
-        int i,j;
-..\User\src\Com4004.c(2425): warning:  #177-D: variable "temp_counter" was declared but never referenced
-        u8 temp_counter,gene_message_id_H,gene_message_id_L;
-..\User\src\Com4004.c(2425): warning:  #177-D: variable "gene_message_id_H" was declared but never referenced
-        u8 temp_counter,gene_message_id_H,gene_message_id_L;
-..\User\src\Com4004.c(2425): warning:  #177-D: variable "gene_message_id_L" was declared but never referenced
-        u8 temp_counter,gene_message_id_H,gene_message_id_L;
-..\User\src\Com4004.c(2811): warning:  #550-D: variable "double_break" was set but never used
-        u8 double_break = 0;
-..\User\src\Com4004.c: 42 warnings, 0 errors
+compiling sensors_gpio.c...
 linking...
-Program Size: Code=69268 RO-data=732 RW-data=240 ZI-data=61224  
-"..\OBJ\ssp32.axf" - 0 Error(s), 42 Warning(s).
+Program Size: Code=47944 RO-data=624 RW-data=424 ZI-data=46728  
+"..\OBJ\ssp32.axf" - 0 Error(s), 0 Warning(s).
 </pre>
 </body>
 </html>
+e = 0;
+..\User\src\main.c: 1 warning, 0 errors
+compiling usart.c...
+..\User\src\usart.c(121): warning:  #1293-D: assignment in condition
+        while( *tmp++ = *src++ ) ;
+..\User\src\usart.c: 1 warning, 0 errors
+compiling Com4004.c...
+..\User\src\Com4004.c(24): warning:  #1293-D: assignment in condition
+        while(!(ret=(*(unsigned char *)str2 - *(unsigned char *)str1)&&*str2))
+..\User\src\Com4004.c(86): warning:  #177-D: variable "len" was declared but never referenced
+        u8 len = 0, cnt = 0;
+..\User\src\Com4004.c(86): warning:  #177-D: variable "cnt" was declared but never referenced
+        u8 len = 0, cnt = 0;
+..\User\src\Com4004.c(107): warning:  #177-D: variable "onejson" was declared but never referenced
+        cJSON *root, *tmp, *devjson, *onejson, *newjson;
+..\User\src\Com4004.c(107): warning:  #177-D: variable "newjson" was declared but never referenced
+        cJSON *root, *tmp, *devjson, *onejson, *newjson;
+..\User\src\Com4004.c(108): warning:  #177-D: variable "i" was declared but never referenced
+        int i, devsize, ret = RECEIPT_CODE_FAILED;
+..\User\src\Com4004.c(108): warning:  #177-D: variable "devsize" was declared but never referenced
+        int i, devsize, ret = RECEIPT_CODE_FAILED;
+..\User\src\Com4004.c: 7 warnings, 0 errors
+compiling timer.c...
+compiling Com1010.c...
+..\User\src\Com1010.c(1164): warning:  #177-D: variable "i" was declared but never referenced
+        u8 i, num, ret = 3;
+..\User\src\Com1010.c(1420): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *restrict"
+                                strcpy(ss.sc[num].deviceid, rev_deviceid);
+..\User\src\Com1010.c(1466): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *restrict"
+                                strcpy(ss.st[num].deviceid, rev_deviceid);
+..\User\src\Com1010.c: 3 warnings, 0 errors
+compiling list.c...
+compiling sensors.c...
+compiling sensors_adc.c...
+compiling sensors_gpio.c...
+compiling sensors_i2c_hal.c...
+compiling sensors_sht3x.c...
+compiling sensors_timer.c...
+compiling sensors_uart.c...
+compiling ir.c...
+linking...
+Program Size: Code=47944 RO-data=624 RW-data=424 ZI-data=46728  
+"..\OBJ\ssp32.axf" - 0 Error(s), 12 Warning(s).

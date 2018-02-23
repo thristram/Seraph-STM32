@@ -9,15 +9,71 @@
 #include "stdio.h"	
 #include "sys.h" 
 
-USART_EXT void uart1_init(u32 bound);
-USART_EXT void MYDMA_Enable(DMA_Channel_TypeDef*DMA_CHx);
+
+
+#define USART1_DMA_CHANNEL       DMA1_Channel5
+
+
+
+
+
+
+#define USART2_RX_BUF_LEN		64			/* usart2最大接收长度 */
+#define USART2_TX_BUF_LEN		64			/* usart2最大发送长度 */
+
+typedef struct
+{
+	u8		rxCnt;
+	u8		txCnt;
+
+	u8		rxLen;
+	u8		txLen;
+	
+	u8		txBuf[USART2_TX_BUF_LEN];	
+	u8		rxBuf[USART2_RX_BUF_LEN];
+
+}USART2_handle_t;
+
+extern USART2_handle_t USART2_handle;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+void USART1_init(u32 bound);
 USART_EXT void Usart1_Send(u8 *buf,u16 len);
 
-USART_EXT void uart2_init(u32 bound);
-USART_EXT void Usart2_Send(u8 *buf,u16 len);
-
 USART_EXT u8 *copystring(u8 *des,u8 *src);
-USART_EXT u16 get_sspbuf(u16 src_len);
+
+
+
+
+void USART2_init(u32 bound);
+void USART2_send(u8 *buf, u16 len);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #endif
 

@@ -22,6 +22,7 @@ void TIM2_Init(void)
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1; 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
+	
 }
 
 
@@ -55,7 +56,12 @@ void TIM2_IRQHandler(void)
 			systime[3] = 0;
 			f_2s = 1;
 		}
+
+		Usart1_Delay_Cnt++;
+			
 	}
 
 }
+
+
 

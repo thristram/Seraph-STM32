@@ -9,7 +9,7 @@
 #include "sensors.h"
 
 
-GP2Y1023_value_t GP2Y1023_value;
+GP2Y1023_value_t GP2Y1023_value = {0};
 
 
 
@@ -44,8 +44,8 @@ void GP2Y1023_NVIC_config(void)
 
 //	NVIC_Configuration();	//前面已经设置了中断分组2
 	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn; 		 //TIM3中断
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x00; //抢占优先级 1， 
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02; 	//子优先级 2
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2; //抢占优先级 1， 
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2; 	//子优先级 2
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 	//使能外部中断通道 
 
 	NVIC_Init(&NVIC_InitStructure); 		//根据结构体信息进行优先级初始化 
@@ -68,7 +68,7 @@ void GP2Y1023_timer_config(void)
 	TIM_DeInit(TIM3); //初始化TIM3为缺省值 0
 
 	TIM_TimeBaseStructure.TIM_Period = 0xffff; 
-	TIM_TimeBaseStructure.TIM_Prescaler = 720-1;
+	TIM_TimeBaseStructure.TIM_Prescaler = 720 -1;
 	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
 	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up; 
 	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
@@ -105,40 +105,79 @@ void GP2Y1023_timer_config(void)
 	粉尘浓度平滑
 	每存储10个数据之后才计算浓度值
 	前面10个浓度的值的和保存在out_us_old中；
+
+if(out_us_cnt >= 10){
+
+	for(i=1; i<10; i++){				
+		out_us[0] += out_us[i];
+	}
+
+	if(out_us_old){
+		
+		out_us[0] = (out_us_old + out_us[0]) / 2 ;		
+
+	}
+	
+	sensors_value.pm25_density = ((out_us[0] / 10) + 1 - OUTPUT_AT_NO_DUST) / OUTPUT_SENSITIVITY_K;
+	sensors_printf("\n pm25:%lf", sensors_value.pm25_density);
+
+	out_us_old = out_us[0];
+	
+	out_us[0] = output_us;
+	out_us_cnt = 1; 	
+	
+}else{
+
+	out_us[out_us_cnt] = output_us;
+	out_us_cnt++;
+
+}
+
 ------------------------------------------------------------------------*/
 void pm25_density_handler(int output_us)
 {
-	static int out_us[16] = {0};
-	static int out_us_old = 0;
+	static int out_us = 0;
 	static int out_us_cnt = 0;
-	int i;
+	static int dust_buf[20] = {0};
+	static int dust_cnt = 0;
 
+	u8 i;
 
-	if(out_us_cnt >= 10){
-
-		for(i=1; i<10; i++){				/* 10 个数据的和 */
-			out_us[0] += out_us[i];
-		}
-
-		if(out_us_old){
+	if(out_us_cnt >= 50){
+		
+		if(dust_cnt < PM25_BUF_LEN){
 			
-			out_us[0] = (out_us_old + out_us[0]) / 2 ;		/* 前后20个数据的*/
+			dust_buf[dust_cnt] = out_us / 50;
+			dust_cnt++;
+
+		}else{
+		
+			for(i = 0; i < PM25_BUF_LEN - 1; i++){			
+				dust_buf[i]= dust_buf[i + 1];
+			}
+			
+			dust_buf[PM25_BUF_LEN -1] = out_us / 50;
 
 		}
 		
-		sensors_value.pm25_density = (out_us[0] / 10 + 1 - OUTPUT_AT_NO_DUST) / OUTPUT_SENSITIVITY_K;
+		out_us = 0;
+		for(i = 0; i < dust_cnt; i++){			
+			out_us += dust_buf[i];
+		}
+
+		out_us = out_us / dust_cnt;
+
+		sensors_value.pm25_density = (out_us - OUTPUT_AT_NO_DUST) / OUTPUT_SENSITIVITY_K;
 		sensors_printf("\n pm25:%lf", sensors_value.pm25_density);
 
-		out_us_old = out_us[0];
+		out_us_cnt = 0;		
+		out_us = 0;
 		
-		out_us[0] = output_us;
-		out_us_cnt = 1;		
+	}
+	else{
 		
-	}else{
-
-		out_us[out_us_cnt] = output_us;
+		out_us += output_us;
 		out_us_cnt++;
-
 	}
 
 
@@ -158,23 +197,27 @@ void TIM3_IRQHandler(void)
 	GP2Y1023_value.IC1Value = TIM_GetCapture1(TIM3); //读取IC2捕获寄存器的值，即为PWM周期的计数值
 
 	if(GP2Y1023_value.IC2Value != 0){
-		
 
 		GP2Y1023_value.dutyCycle = (float)GP2Y1023_value.IC1Value / GP2Y1023_value.IC2Value; //读取IC1捕获寄存器的值，并计算占空比
 		GP2Y1023_value.frequency = (float)GP2Y1023_value.timerFreq / GP2Y1023_value.IC2Value; //计算PWM频率。
-		GP2Y1023_value.output_us = GP2Y1023_value.dutyCycle*1000000/GP2Y1023_value.frequency;
+
+		GP2Y1023_value.output_us = GP2Y1023_value.dutyCycle*10000;
+//		GP2Y1023_value.output_us = GP2Y1023_value.dutyCycle*1000000/GP2Y1023_value.frequency;
 
 
 //		sensors_printf("\n GP2Y1023 IC2Value:%d	IC1Value:%d	dutyCycle:%lf	frequency:%lf output_us:%d", 
 //			GP2Y1023_value.IC2Value, TIM_GetCapture1(TIM3), GP2Y1023_value.dutyCycle, GP2Y1023_value.frequency, GP2Y1023_value.output_us);
 
 		/* 取值范围 */
-		if(GP2Y1023_value.output_us < OUTPUT_AT_NO_DUST){
-			GP2Y1023_value.output_us = OUTPUT_AT_NO_DUST;
-		}	
-		if(GP2Y1023_value.output_us > OUTPUT_AT_MAX_DUST){
+		if(GP2Y1023_value.output_us > OUTPUT_AT_NO_DUST && GP2Y1023_value.output_us < OUTPUT_AT_MAX_DUST){			
+			GP2Y1023_value.com_cnt++;
+			
+		}else if(GP2Y1023_value.output_us <= OUTPUT_AT_NO_DUST){
+			GP2Y1023_value.output_us = OUTPUT_AT_NO_DUST;			
+		}else{
 			GP2Y1023_value.output_us = OUTPUT_AT_MAX_DUST;
 		}
+
 		pm25_density_handler(GP2Y1023_value.output_us);
 
 	}else{

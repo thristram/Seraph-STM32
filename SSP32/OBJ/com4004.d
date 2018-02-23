@@ -4,11 +4,11 @@
 ..\obj\com4004.o: ..\User\inc\sys.h
 ..\obj\com4004.o: ..\User\inc\stm32f10x.h
 ..\obj\com4004.o: ..\Lib\cmsis\core_cm3.h
-..\obj\com4004.o: D:\Program Files\ARM\ADSv1_2\INCLUDE\stdint.h
-..\obj\com4004.o: C:\Keil\ARM\INC\ST\STM32F10x\system_stm32f10x.h
+..\obj\com4004.o: C:\Keil_v5\ARM\ARMCC\bin\..\include\stdint.h
+..\obj\com4004.o: ..\Lib\cmsis\system_stm32f10x.h
 ..\obj\com4004.o: ..\User\inc\stm32f10x_conf.h
 ..\obj\com4004.o: ..\Lib\inc\stm32f10x_dma.h
-..\obj\com4004.o: C:\Keil\ARM\INC\ST\STM32F10x\stm32f10x.h
+..\obj\com4004.o: ..\User\inc\stm32f10x.h
 ..\obj\com4004.o: ..\Lib\inc\stm32f10x_gpio.h
 ..\obj\com4004.o: ..\Lib\inc\stm32f10x_rcc.h
 ..\obj\com4004.o: ..\Lib\inc\stm32f10x_tim.h
@@ -19,12 +19,22 @@
 ..\obj\com4004.o: ..\User\inc\delay.h
 ..\obj\com4004.o: ..\User\inc\timer.h
 ..\obj\com4004.o: ..\User\inc\usart.h
-..\obj\com4004.o: C:\Keil\ARM\ARMCC\include\stdio.h
+..\obj\com4004.o: C:\Keil_v5\ARM\ARMCC\bin\..\include\stdio.h
 ..\obj\com4004.o: ..\User\inc\Com4004.h
+..\obj\com4004.o: ..\User\inc\cJSON.h
+..\obj\com4004.o: C:\Keil_v5\ARM\ARMCC\bin\..\include\stddef.h
 ..\obj\com4004.o: ..\User\inc\Com1010.h
 ..\obj\com4004.o: ..\User\inc\list.h
-..\obj\com4004.o: ..\User\inc\cJSON.h
-..\obj\com4004.o: D:\Program Files\ARM\ADSv1_2\INCLUDE\stddef.h
 ..\obj\com4004.o: ..\User\inc\malloc.h
-..\obj\com4004.o: D:\Program Files\ARM\ADSv1_2\INCLUDE\string.h
-..\obj\com4004.o: D:\Program Files\ARM\ADSv1_2\INCLUDE\stdlib.h
+..\obj\com4004.o: C:\Keil_v5\ARM\ARMCC\bin\..\include\string.h
+..\obj\com4004.o: ..\User\inc\key_string.h
+..\obj\com4004.o: C:\Keil_v5\ARM\ARMCC\bin\..\include\stdlib.h
+..\obj\com4004.o: ..\User\inc\sensors.h
+..\obj\com4004.o: ..\User\inc\sensors_adc.h
+..\obj\com4004.o: ..\User\inc\sensors_timer.h
+..\obj\com4004.o: ..\User\inc\sensors_gpio.h
+..\obj\com4004.o: ..\User\inc\sensors_uart.h
+..\obj\com4004.o: ..\User\inc\sensors_typedefs.h
+..\obj\com4004.o: ..\User\inc\sensors_sht3x.h
+..\obj\com4004.o: ..\User\inc\sensors_i2c_hal.h
+..\obj\com4004.o: ..\User\inc\ir.h

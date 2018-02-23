@@ -4,17 +4,16 @@
 //*************************************************************
 
 #ifndef  _COM1010_GLOBAL
-#define  COM1010_EXT  extern 
+#define  COM1010_EXT  extern
 #else
-#define  COM1010_EXT 
+#define  COM1010_EXT
 #endif
 #include "sys.h"
 #include "type.h"
+#include "cJSON.h"
 
-#define Usart2_Rec_Len	100
-#define Usart2_Send_Len	100
 
-/***************message id定义****************************
+/*------------------ message id定义 --------------------------------
 cmd-data：
 st1~st20分别为0~19
 cmd-refresh:
@@ -28,7 +27,7 @@ action-command:
 sc1~sc5分别为75~79
 quick-event发送action-command：
 st1~st20分别为80~99
-sc1~sc5分别为100~104 单模块
+sc1~sc5分别为100~104 	单模块
 sc1~sc5分别为105~109	多模块
 led-command:
 st1~st20分别为110~119
@@ -46,47 +45,19 @@ SLC或SLC调节完成后SC发送AA 05给SS，此时的message id就是0x9F。
 SS接收到后，根据异步通知得相应的SC，并发送device status(包括SLC和SPC状态)给eSH
 0x9F
 
-*********************************************************/
+-------------------------------------------------------------------*/
 
 
-typedef struct
-{
-	u8 frame_h1;
-	u8 frame_h2;
-	u8 message_id;
-	u8 mesh_id_H;
-	u8 mesh_id_L;
-	u8 payload[50];
-}SICP_Message;
 
-typedef struct
-{
-	char deviceid[12];
-	u8 message_id;
-	u8 mesh_id_H;
-	u8 mesh_id_L;
-	u8 action_timeout;
-	u8 action_cmd;
-	u8 action_channel_cnt;
-	u8 action_channel;
-	u8 action_value;
-	u8 action_ext;
-	u8 action_ing;//等待第1条指令发送标志
-	u8 action_channel2;
-	u8 action_channel3;
-	u8 action_channel4;
-	u8 action_channel5;
-	u8 action_channel6;
-	u8 action_channel7;
-	u8 action_channel8;
-	u8 action_channel9;
-	u8 action_channel10;
-	u8 action_channel11;
-	u8 action_channel12;
-	u8 action_channel13;
-	u8 action_channel14;
-	u8 action_channel15;
-}ACTION;
+
+#define SICP_SEND_HEARTBEAT_TIME	30
+
+
+#define SICP_BROADCAST_LOOP_NUMS		5			/* 设备广播循环次数*/
+
+
+
+
 
 typedef struct
 {
@@ -95,80 +66,144 @@ typedef struct
 	u8 phones;
 	u8 host_meshid_H;
 	u8 host_meshid_L;
-}NET_Status;
+	
+} NET_Status;			//1010网络状态帧network status reporting
 
 
-/***************位变量定义****************************/
+typedef union{
+	
+	u8 byte;
+	struct{
+	        u8 recvFlag:1;					/* 接收标志 */
+	        u8 sensorsFreshCmdSended:1;	/* ssp收到data/recent，sicp发送刷新传感器数据完成 */
+	        u8 bit2:1;
+	        u8 bit3:1;
+	        u8 bit4:1;
+		u8 bit5:1;
+	        u8 bit6:1;
+	        u8 bit7:1;
 
-COM1010_EXT union  FLAG 						UART2Flag1_;
-#define UART2Flag1 									UART2Flag1_._flag_byte
-#define usart2_rev_success					UART2Flag1_._flag_bit.bit0
-#define ble_data_frame							UART2Flag1_._flag_bit.bit1//收到BLE数据帧,帧头0xEE 0xEE
-#define ble_ctrl_frame							UART2Flag1_._flag_bit.bit2//收到BLE控制帧，帧头0xDD,0xDD
-#define rev_action_done							UART2Flag1_._flag_bit.bit3//接收到所有ss_ap的sicp回复
-#define rev_action_done2						UART2Flag1_._flag_bit.bit4//接收到qe的sicp回复
-#define send_dr_refresh_cmd_done		UART2Flag1_._flag_bit.bit5//ssp收到data/recent，sicp发送刷新传感器数据完成
-
-COM1010_EXT union  FLAG 						UART2Flag2_;
-#define UART2Flag2 									UART2Flag2_._flag_byte
-#define rev_20											UART2Flag2_._flag_bit.bit0//接收到0x20指令
-#define rev_06											UART2Flag2_._flag_bit.bit1//接收到0x06指令
-#define rev_B1											UART2Flag2_._flag_bit.bit2//接收到0xB1指令
-#define rev_B2											UART2Flag2_._flag_bit.bit3//接收到0xB2指令
-#define rev_B3											UART2Flag2_._flag_bit.bit4//接收到0xB3指令
-#define rev_B4											UART2Flag2_._flag_bit.bit5//接收到0xB4指令
+  	}bit;
+	
+} sicp_status_t;
 
 
 /***************全局变量定义**************************/
-COM1010_EXT u8  Usart2_Rece_Buf[Usart2_Rec_Len];
-COM1010_EXT u8	Usart2_Rec_Cnt;
-COM1010_EXT u8  USART2_Send_Buf[Usart2_Send_Len];		//发送缓冲区
-COM1010_EXT u16 Usart2_Send_Length;
-COM1010_EXT u16 Usart2_Send_Cnt;
-COM1010_EXT u8  Usart2_Send_Done;//发送完成标志
-COM1010_EXT u8  sicp_buf[Usart2_Rec_Len];
 
-COM1010_EXT u8  heartbeat_cnt;
-COM1010_EXT u8  sicp_refr;
-COM1010_EXT u8  broadcast_cnt;;
+#define SICP_RX_BUF_LEN			USART2_RX_BUF_LEN	
+#define SICP_TX_BUF_LEN			USART2_TX_BUF_LEN	
 
-COM1010_EXT u8 action_type;
-COM1010_EXT u8 action_timecnt;
-COM1010_EXT u8 action_sendcnt;
-COM1010_EXT ACTION action[10];
-COM1010_EXT u8 rev_action_success_cnt;
-COM1010_EXT u8 rev_action_fail_cnt;
+typedef struct
+{
+	u8 frame_h1;
+	u8 frame_h2;
+	u8 message_id;
+	u8 mesh_id_H;
+	u8 mesh_id_L;
+	u8 payload[SICP_TX_BUF_LEN];
+	
+} SICP_Message;		//根据SIDP协议定义SICP_Message
 
-COM1010_EXT ACTION action_qe;
-COM1010_EXT NET_Status ns;
-COM1010_EXT u8 	rev_mesh_id_H;
-COM1010_EXT u8 	rev_mesh_id_L;
+
+/* SICP 中需要处理的数据缓存 */
+typedef struct
+{
+	sicp_status_t status;
+
+	u8 rxBuf[SICP_RX_BUF_LEN];
+	u8 txBuf[SICP_TX_BUF_LEN];
+	
+} SICP_handle_t;		
+
+extern SICP_handle_t SICP_handle;
+
+
+
+COM1010_EXT u8  sicp_refr;			//SS刷新下挂SC和ST的传感器计时，该数据由esh发送的consig ss得到
+
+COM1010_EXT NET_Status ns;		//1010的network status reporting缓存数据结构
+
+
+
+
 
 /**************函数声明*******************************/
 COM1010_EXT u8 Check_Sum(u8 *buf,u8 length);
-COM1010_EXT void rev_anaylze(void);
-COM1010_EXT void clear_sicp_buf(void);
-COM1010_EXT void sicp_send_message(SICP_Message *tx,u8 pay_len);
-COM1010_EXT void rev_deal(void);
-COM1010_EXT void sicp_send_heartbeart(void);
-COM1010_EXT void sicp_receipt(u8 type,u8 send_message_id,u16 send_mesh_id);
-COM1010_EXT void sicp_ble_cmd(u8 type,u8 send_message_id,u16 send_mesh_id);
-COM1010_EXT void sicp_config_cmd(u8 send_message_id,u16 send_mesh_id);
-COM1010_EXT void send_action_message(ACTION *ac);
-COM1010_EXT void sicp_action_cmd(void);
-
-COM1010_EXT void deal_device_info(u8 type);
-COM1010_EXT void deal_rev_status(void);
-COM1010_EXT void deal_mal_cmd(void);
-COM1010_EXT void deal_sc_data_cmd(void);
+COM1010_EXT void sicp_send_receipt(u8 type,u8 send_message_id,u16 send_mesh_id);
 
 COM1010_EXT void sicp_cmd_refresh(void);
 COM1010_EXT void sicp_cmd_data(void);
-COM1010_EXT void sicp_alert_cmd(void);
 COM1010_EXT void sicp_led_cmd(void);
-COM1010_EXT void sicp_qe_action_cmd(void);
-COM1010_EXT void sicp_broadcast(void);
 
+
+
+
+typedef enum
+{
+    GET_SERIES_TO_SAVE = 0,		/* 获取可以保存的位置 */
+    GET_SERIES_WHEN_EXSIT ,		/* 获取已经保存的位置 */
+
+
+} GET_SERIES_WAY;
+
+
+typedef enum
+{
+    GET_SERIES_SC = 0,
+    GET_SERIES_ST,
+    GET_SERIES_SL,
+    GET_SERIES_SP,
+
+} GET_SERIES_OBJECT;
+
+typedef enum
+{
+    GET_SERIES_ERROR = 0Xff,
+
+} GET_SERIES_RESULT;
+
+
+
+
+extern u8 BIT[8];
+
+
+void sicp_handle_clear(void);
+
+void sicp_recv_analyze(void);
+
+
+u8 get_series_number(GET_SERIES_WAY way, GET_SERIES_OBJECT object, u16 meshid, char *deviceid);
+u8 get_device_number(GET_SERIES_OBJECT object, u16 meshid);
+
+void sicp_config_st_send(void);
+void sicp_alarm_cmd(void);
+
+
+u8 sicp_get_message_id(void);
+
+void sicp_recv_device_info(u16 meshid);
+void sicp_ble_ctrl_cmd(u8 type, u16 mesh_id);
+
+void sicp_broadcast_loop(void);
+
+int string_toDec(const char *str);
+
+void sicp_send_heartbeat(void);
+
+unsigned char  string_touchar(const char *str);
+
+
+unsigned char  string_tohex2(const char *str);
+void sicp_send_message(SICP_Message *tx, u8 pay_len, u8 reSendFlag);
+
+
+void reSendList_send(void);
+
+/* main.c */
+extern void system_init(void);
+
+u8 XOR_Check(u8 *buf, u16 length);
 
 #endif
 

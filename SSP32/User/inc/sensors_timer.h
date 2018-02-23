@@ -16,9 +16,12 @@
 
 
 #define OUTPUT_AT_NO_DUST		1350		/* 无尘时输出低电平时间 */
-#define OUTPUT_AT_MAX_DUST		5200		/* 最大输出低电平时间 */
-#define OUTPUT_SENSITIVITY_K	3.33		/* 乘积因素 */
+//#define OUTPUT_AT_NO_DUST		1400		/* 无尘时输出低电平时间 */
 
+#define OUTPUT_AT_MAX_DUST		5200		/* 最大输出低电平时间 */
+#define OUTPUT_SENSITIVITY_K		3.33		/* 乘积因素 */
+
+#define PM25_BUF_LEN				20		
 
 
 typedef struct
@@ -29,6 +32,7 @@ typedef struct
 	uint32_t 	timerFreq;
 
 	int 		output_us;		/* 低电平的us数 */
+	int 		com_cnt;			/* 通讯计数每个周期加1，即每10ms加1 */
 	
 	float 		frequency;
 	float 		dutyCycle;

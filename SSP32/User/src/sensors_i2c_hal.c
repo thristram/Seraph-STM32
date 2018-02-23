@@ -30,6 +30,15 @@
 #define SCL_OPEN() (GPIOB->BSRR = 0x00000100) // set SCL to open-drain
 #define SCL_READ   (GPIOB->IDR  & 0x0100)     // read SCL
 
+// SDA on port B, bit 9
+//#define SCL_LOW()  (GPIOB->BSRR = 0x02000000) // set SDA to low
+//#define SCL_OPEN() (GPIOB->BSRR = 0x00000200) // set SDA to open-drain
+//#define SCL_READ   (GPIOB->IDR  & 0x0200)     // read SDA
+
+// SCL on port B, bit 8              /* -- adapt the defines for your uC -- */
+//#define SDA_LOW()  (GPIOB->BSRR = 0x01000000) // set SCL to low
+//#define SDA_OPEN() (GPIOB->BSRR = 0x00000100) // set SCL to open-drain
+//#define SDA_READ   (GPIOB->IDR  & 0x0100)     // read SCL
 
 
 

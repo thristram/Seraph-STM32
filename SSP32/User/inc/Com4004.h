@@ -10,12 +10,14 @@
 #endif
 #include "sys.h"
 #include "type.h"
+#include "cJSON.h"
 
-#define DMA_Rec_Len 		1024
-#define Send_Len 				1024
-#define MAX              255            //Ëæ»úÊı×î´óÖµ
-#define MIN              1              //Ëæ»úÊı×îĞ¡Öµ
-#define MAX_BUF_LEN			 1024
+
+#define DMA_BUF_LEN 			1024
+#define USART1_TXBUF_LEN 	1024
+#define RANDOM_MAX_NUM       	255          	/* Ëæ»úÊı×î´óÖµ */
+#define RANDOM_MIN_NUM        	1              /* Ëæ»úÊı×îĞ¡Öµ */
+#define MAX_BUF_LEN		 	1024
 
 //·¢ËÍÔö¼Ó¶ÓÁĞ£¬ĞÂÔö¶¨Òåsend_messageº¯ÊıµÄ·µ»Ø½á¹¹Ìå
 typedef struct{
@@ -36,73 +38,46 @@ typedef struct
 		}first_ch_union;
 		u8 first_ch_byte;
 	}ch;
-	u8 r_length[4];
+	u8 r_length[4];	//remaining length×î´óÓĞ4¸ö×Ö½Ú
 	u8 r_length_len;//r_length[]Êı×éÊµ¼ÊÓĞÖµµÄ¸öÊı
-}Fixheader;
+}Fixheader;	//Ğ­Òé¹Ì¶¨Í·²¿
 
 typedef struct
 {
 	u8 version;
 	u8 topic_lengthH;
 	u8 topic_lengthL;
-	u8 topic[300];
-	u8 message_id_H;
-	u8 message_id_L;
 	u8 ext_message_id;
-}Variableheader;
 
-typedef enum 
-{
-	RESERCED,
-	CONNETC,
-	GET,
-	POST,
-	PUT,
-	DELETE,
-	OTA,
-}_REQUEST_;
-
-typedef enum 
-{
-	ACTION_PERPORM,	//action_performÖ¸ÁîÖ´ĞĞÍê³É
-	ACTION_REFRESH,
-	ACTION_BACKLIGHT,
-	CONFIG_SS,		//Ö±½Ó»Ø¸´½ÓÊÕ»ØÖ´
-	DATA_SYNC,
-	POST_DATA_SYNC,//Ö÷¶¯ÍÆËÍ´«¸ĞÆ÷Êı¾İ
-	DATA_RECENT,
-	DATA_IR,			//»Ø¸´³É¹¦½ÓÊÕIRÊı¾İ
-	BAD_REQUEST,
-	UNAUTHORIZED,
-	FORBIDDEN,
-	NOT_FOUND,
-	REQUEST_TIMEOUT,
-	INTERNAL_SERVER_ERROR,
-	SERVICE_UNAVAILABLE,
-	VERSION_NOT_SUPPORTED,
-}_REPLY_;
-
+	u8 topic[300];
+	u16 msgid;
+	
+	
+}Variableheader;//Ğ­Òé¿É±äÍ·²¿
 
 
 typedef struct
 {
 	Fixheader 			tx_fix_header;
-	Variableheader 	tx_var_header;	
-	char 						tx_payload[1024];
+	Variableheader 		tx_var_header;	
+	u32				tx_payload_len;
+	char 				tx_payload[1024];
+	
 }Txmessage;
 
 typedef struct
 {
 	Fixheader 			rx_fix_header;
-	Variableheader 	rx_var_header;	
-	u8 							rx_payload[1024];
+	Variableheader 		rx_var_header;
+	u8 				rx_payload[1024];
 }Rxmessage;
 
 typedef struct
 {
 	int erase;
 	int duration;
-}DM;
+}DM;	//µ÷¹âÖ¸Áî°üº¬erase¡¢duration
+
 typedef struct
 {
 	int  seqid;
@@ -126,14 +101,7 @@ typedef struct
 	int  timeout;
 }SP_AP;//SC action/perform data struct
 
-typedef struct
-{
-	u8		qos;				//qos = sl_num + sp_num
-	SL_AP	sl_ap[10];	//Ôİ¶¨Ò»¸öSSÏÂÃæ×î¶àÒ»´ÎÊÕµ½10¸öSL actionÖ¸Áî
-	u8 		sl_num;
-	SP_AP	sp_ap[10];	//Ôİ¶¨Ò»¸öSSÏÂÃæ×î¶àÒ»´ÎÊÕµ½10¸öSP actionÖ¸Áî
-	u8 		sp_num;
-}AP;		//action/perform data struct
+
 
 
 typedef struct
@@ -142,7 +110,7 @@ typedef struct
 	int duration;
 	int out;
 	int blank;
-}TIME;
+}TIME;	//action backlightÖĞµÄtimeÄÚÈİ
 
 typedef struct
 {
@@ -188,25 +156,17 @@ typedef struct
 	char 	ch[2];
 }DS;		//data/sync data struct
 
-typedef struct
-{
-	int 	type;
-	char 	code[20];
-	char	address[10];
-	char	other[10];
-	char	raw[800];
-}IR;
 
 typedef struct
 {
 	u32 total_energy_consum;
 	u16 total_current;
 	u8  voltage;
-}SC_sense;
+}SC_sense;		//SCµÄ´«¸ĞÆ÷£¬¼´SPCÉÏµÄACS712
 
 typedef struct
 {
-	u8 brightness;
+	//u8 brightness;
 	u8 handgusture_H;
 	u8 handgusture_L;
 	u8 ambient_light;
@@ -215,119 +175,334 @@ typedef struct
 	u8 color_sense_M;
 	u8 color_sense_L;
 	u8 pad_value;
-}ST_sense;
+	
+}ST_sense;		//STµÄ´«¸ĞÆ÷£¬°üº¬ÊÖÊÆ¡¢»·¾³¹âÁÁ¶È¡¢½Ó½ü¡¢»·¾³¹âÑÕÉ«¡¢´¥Ãş°´¼üÖµ
 
 typedef struct
 {
-	int temperature;
-	u8 humidity;
-	u8  pm2_5_H;
+	int temperature;	//SHT30ÎÂ¶È£¬2byte±íÊ¾£¬ÓĞÕı¸º
+	u8 humidity;			//SHT30Êª¶È
+	u8  pm2_5_H;			//PM2.5 2bytes±íÊ¾
 	u8  pm2_5_L;
 	u8  motion;	//ÔË¶¯´«¸ĞÆ÷
 	u8  presence;//ÈËÌå¼ì²â
 	u8  bt;			//¹âÏßÇ¿¶È
-	u8  CO_H;
+	u8  CO_H;		//COÅ¨¶È£¬2bytes
 	u8  CO_L;
-	u8  CO2_H;
+	u8  CO2_H;	//CO2Å¨¶È£¬2bytes
 	u8  CO2_L;
-	u8 	VOC;
-	u8 	smoke;
-	u8 	energy_diff;
+	u8 	VOC;		//VOC
+	u8 	smoke;	//ÑÌÎí
+	//u8 	energy_diff;	
 	u8 	human_sensing;//1Î»ÓĞÈË£¬0ÎªÎŞÈË£¬11×óÓÒÁ½±ß¾ùÓĞÈË
 }SS_sense;
 
 typedef struct
 {
-	u16				meshid;
-	char 			deviceid[12];
-	char			firmware[3];
-	int				HWTtest;
-	char			model[3];//Éè±¸ĞÍºÅ
-	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[20];
-	int				MDID;//ÓÃÓÚ»ã±¨SLC/SPCµÄĞÅÏ¢£¬Ä£¿éID
-	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»ÓĞÍÆËÍ
-	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
+	u8				MDID;		/* Éè±¸´æÔÚµÄÒÀ¾İ *///ÓÃÓÚ»ã±¨SLC/SPCµÄĞÅÏ¢£¬Ä£¿éID
+	union 	FLAG 		status;		//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
 												//b1±íÊ¾ÊÕµ½sicp»Ø¸´channel×´Ì¬£¬Ö´ĞĞ³É¹¦
 												//b2±íÊ¾ÊÕµ½sicp»Ø¸´action cmdÖ´ĞĞÊ§°Ü
 	u8				ch1_status;
 	u8				ch2_status;
 	u8				ch3_status;
 	u8				ch4_status;
+	
+	u8				firmware;		//¹Ì¼ş°æ±¾
+	u8				HWTtest;			//¹ÊÕÏĞÅÏ¢£¬Ïê¼ûSIDP 6.Device Addressing
+	
 }SLC;
 
 typedef struct
 {
-	u16				meshid;
-	char 			deviceid[12];
-	char			firmware[3];
-	int				HWTtest;
-	char			model[3];//Éè±¸ĞÍºÅ
-	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[20];
-	int				MDID;//ÓÃÓÚ»ã±¨SLC/SPCµÄĞÅÏ¢£¬Ä£¿éID
-	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»ÓĞÍÆË
-	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
+
+	u8				MDID;			/* Éè±¸´æÔÚµÄÒÀ¾İ */ //ÓÃÓÚ»ã±¨SLC/SPCµÄĞÅÏ¢£¬Ä£¿éID
+	union 		FLAG status;		//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
+	
 	u8				ch1_status;
 	u8				ch2_status;
 	u8				ch3_status;
 	u8				ch4_status;
+
+	u8				firmware;		//¹Ì¼ş°æ±¾	
+	u8				HWTtest;		//¹ÊÕÏĞÅÏ¢£¬Ïê¼ûSIDP 6.Device Addressing
+	
 	u16				energy_consum;
+	
 }SPC;
 
-typedef struct
-{
-	u16				meshid;
-	char 			deviceid[12];
-	char			firmware[3];
-	int				HWTtest;
-	char			model[3];//Éè±¸ĞÍºÅ
-	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[20];
-	SC_sense 	sense;
-	int				Ndevice;//SCÏÂ¹ÒÓĞ¼¸¸öSLC/SPC
-	SLC				slc[15];//Ôİ¶¨£¬Ò»¸öSCÏÂ×î¶à¹Ò15¸öslc
-	SPC				spc[15];//Ôİ¶¨£¬Ò»¸öSCÏÂ×î¶à¹Ò15¸öspc
-	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»ÓĞÍÆË
-	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
-}SC;
+
+
+
+#define SC_NUMS_OF_SS		5
+#define ST_NUMS_OF_SS		20
+#define SL_NUMS_OF_SC		15
+#define SP_NUMS_OF_SC		15
+
+
+
 
 typedef struct
 {
-	u16				meshid;
-	char 			deviceid[12];
-	char			firmware[3];
-	int				HWTtest;
-	char			model[3];//Éè±¸ĞÍºÅ
-	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[20];
-	ST_sense 	sense;
-	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»Ó
+	
+	u8				legalFlag;		
+	u8				heartBeatFlag;	/* ĞÄÌø¹ã²¥±êÖ¾£¬Îª1Ê±±íÊ¾ÕıÔÚ¹ã²¥ĞÄÌø */	
+	
+	u16				meshid;		/* Éè±¸´æÔÚµÄÒÀ¾İ */
+	char 				deviceid[12];
+
+	u8				model;		//Éè±¸ĞÍºÅ
+	u8				firmware;	
+	u8				HWTtest;		//¹ÊÕÏĞÅÏ¢£¬Ïê¼ûSIDP 6.Device Addressing
+
+	SC_sense 			sense;
+
+	u8				Ndevice;				//SCÏÂ¹ÒÓĞ¼¸¸öSLC/SPC
+	SLC				slc[SL_NUMS_OF_SC];		//Ôİ¶¨£¬Ò»¸öSCÏÂ×î¶à¹Ò15¸öslc
+	SPC				spc[SP_NUMS_OF_SC];		//Ôİ¶¨£¬Ò»¸öSCÏÂ×î¶à¹Ò15¸öspc
+
 	union 		FLAG status;//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
+	
+}SC;
+
+
+
+//typedef struct
+//{
+
+//	u8			type;		//typeÎª1Ê±±íÊ¾ÅäÖÃÀàĞÍÎª°´¼ü£¬Îª2Ê±ÎªÊÖÊÆ
+
+//	u8			key;			//µÚ¼¸¸ö°´¼ü
+//	u16			cond;		//ÊÖÊÆ¶¯×÷(0xefe0)
+
+//	u16			meshid;		//´ËÎªÒªÅäÖÃµÄstµÄmeshid,Ğè×Ô¼º²éÕÒËùÓĞstµÄdeviceIdÀ´µÃµ½
+
+//	u8 			boardid;		//mdid+channel
+//	u8			action;
+//	u8 			value;
+//	
+//}config_st_t;	//config st data struct
+
+
+typedef union{
+	
+	u8 byte;
+	struct{
+	        u8 sended:1;		//ÒÑ¾­·¢ËÍ
+	        u8 configok:1;		//ÅäÖÃ³É¹¦
+	        u8 bit2:1;
+	        u8 bit3:1;
+	        u8 bit4:1;
+		u8 bit5:1;
+	        u8 bit6:1;
+	        u8 bit7:1;
+
+  	}bit;
+	
+} config_st_status_t;
+
+
+
+//ÓÃÀ´½âÎötopic
+typedef struct config_st_t {
+	
+	struct config_st_t *next;		
+	
+	config_st_status_t			flag;			//ÅäÖÃ±êÖ¾£¬Èç¹û¸ÃstÈ«²¿ÅäÖÃ³É¹¦£¬ÔòÉ¾³ı¸ÃstÉè±¸µÄconfigÁĞ±í
+	u8 			msgid;				//ÓÃÓÚÈ·ÈÏ½ÓÊÕÅäÖÃ³É¹¦
+
+
+	u8			type;		//typeÎª1Ê±±íÊ¾ÅäÖÃÀàĞÍÎª°´¼ü£¬Îª2Ê±ÎªÊÖÊÆ
+
+	u8			key;			//µÚ¼¸¸ö°´¼ü
+	u16			cond;		//ÊÖÊÆ¶¯×÷(0xefe0)
+
+	u16			meshid;		//´ËÎªÒªÅäÖÃµÄstµÄmeshid,Ğè×Ô¼º²éÕÒËùÓĞstµÄdeviceIdÀ´µÃµ½
+
+	u8 			boardid;		//mdid+channel
+	u8			action;
+	u8 			value;
+	
+}config_st_t;	//config st data struct
+
+
+#define	MPR121_KEYPAD_NUMS	3
+#define	MPR121_LONG_TOUCH_INVALID			0x0A		/*  ³¤°´Æô¶¯»¬¶¯¹¦ÄÜÎŞĞ§  */			
+
+typedef struct
+{
+	u8				legalFlag;		
+
+	u16				meshid;		/* Éè±¸´æÔÚµÄÒÀ¾İ */
+	char 				deviceid[12];
+
+	u8				model;		//Éè±¸ĞÍºÅ
+	u8				firmware;
+	u8				HWTtest;		//¹ÊÕÏĞÅÏ¢£¬Ïê¼ûSIDP 6.Device Addressing
+
+	ST_sense 			sense;
+
+	union 		FLAG status;		//b0±íÊ¾Íø¹Ø½ÓÊÕµ½sicpµÄĞÄÌø°ü»Ø¸´
 												//b1±íÊ¾ÊÕµ½sicp»Ø¸´×´Ì¬£¬Ö´ĞĞ³É¹¦
 												//b2±íÊ¾ÊÕµ½sicp»Ø¸´action cmdÖ´ĞĞÊ§°Ü
 	u8				ch1_status;
 	u8				ch2_status;
 	u8				ch3_status;
 	u8				ch4_status;
+
+	/* esh·¢ËÍµÄ»¬¶¯¸üĞÂÖµĞèÒª±£´æ */
+	u8				level1;
+	u8				level2;
+
+	/* ÊÖÊÆºÍ¶ÀÁ¢ °´¼üÃ»ÓĞ±ØÒª±£´æ */
+	/* »¬¶¯°´¼üºÍ³¤°´Æô¶¯µÄ»¬¶¯¹¦ÄÜµÄ»¬¶¯ÖµĞèÒª±£´æ  */
+//	u8				slipLevel[4];
+
+
+
+	config_st_t		*config_head;
+	config_st_t		*config_last;
+
+	
 }ST;
+
+
+typedef union{
+	
+	u8 byte;
+	struct{
+	        u8 ble_en:1;		//1010Á¬½ÓmeshÍøÂç£¬Õı³£¹¤×÷
+	        u8 tcp_en:1;		//4004½¨Á¢tcpÁ¬½Ó
+	        u8 post_devinfo_ss:1;
+	        u8 recv_devinfo_list:1;
+	        u8 recv_config_ss:1;
+		u8 sicp_broadcast_finish:1;
+	        u8 request_config_st:1;
+	        u8 recv_config_st:1;
+
+  	}bit;
+	
+} ss_status_t;
+
+typedef union{
+	
+	u32 byte;
+	struct{
+
+	        u8 f_uart:1;			/* ÓëÉÏ¼¶Í¨Ñ¶ÀëÏß±êÖ¾ */
+	        u8 f_ble:1;			/* 1010Í¨Ñ¶¹ÊÕÏ£¬3minÄÚ¼ì²âÊ±ºò½ÓÊÜµ½1010µÄ×´Ì¬Ö¡¡¢1010ÊÇ·ñÁ¬½ÓmeshÍøÂç²¢Õı³£ÔËĞĞ */
+		u8 bit2:1;
+		u8 f_MFI:1;
+	        u8 f_SHT30:1;
+	        u8 f_CO:1;
+		u8 f_CO2:1;
+	        u8 f_PM25:1;
+			
+	        u8 f_PYD1798_1:1;
+	        u8 f_PYD1798_2:1;
+	        u8 f_IR:1;
+	        u8 f_SMOKE:1;
+			
+	        u8 f_VOC:1;
+		u8 bit13:1;
+		u8 bit14:1;
+		u8 bit15:1;
+		
+		u8 bit16:1;
+		u8 bit17:1;
+		u8 bit18:1;
+		u8 bit19:1;
+		u8 bit20:1;
+		u8 bit21:1;
+		u8 bit22:1;
+		u8 bit23:1;
+		
+		u8 bit24:1;
+		u8 bit25:1;
+		u8 bit26:1;
+		u8 bit27:1;
+		u8 bit28:1;
+		u8 bit29:1;
+		u8 bit30:1;
+		u8 bit31:1;
+
+  	}bit;
+	
+} ss_malfunction_t;
+
+/* ¸¨Öú¼ì²â¹ÊÕÏ */
+typedef union{
+	
+	u32 byte;
+	struct{
+
+	        u8 f_uart:1;			
+	        u8 f_ble_network_status:1;		/* ½ÓÊÜµ½1010×´Ì¬ÊÇÖÃ1 */
+		u8 bit2:1;
+		u8 f_MFI:1;
+	        u8 f_SHT30:1;
+	        u8 f_CO:1;
+		u8 f_CO2:1;
+	        u8 f_PM25:1;
+			
+	        u8 f_PYD1798_1:1;
+	        u8 f_PYD1798_2:1;
+	        u8 f_IR:1;
+	        u8 f_SMOKE:1;
+			
+	        u8 f_VOC:1;
+		u8 bit13:1;
+		u8 bit14:1;
+		u8 bit15:1;
+		
+		u8 bit16:1;
+		u8 bit17:1;
+		u8 bit18:1;
+		u8 bit19:1;
+		u8 bit20:1;
+		u8 bit21:1;
+		u8 bit22:1;
+		u8 bit23:1;
+		
+		u8 bit24:1;
+		u8 bit25:1;
+		u8 bit26:1;
+		u8 bit27:1;
+		u8 bit28:1;
+		u8 bit29:1;
+		u8 bit30:1;
+		u8 bit31:1;
+
+  	}bit;
+	
+} ss_maldetect_t;
 
 typedef struct
 {
 	u16				meshid;
-	char 			deviceid[12];
-	char			firmware[2];
-	int				HWTtest;
-	char			model[2];//Éè±¸ĞÍºÅ
-	char			coord[10];//Éè±¸ÔÚ·¿¼äµÄÎ»ÖÃ
-	char			macwifi[20];
+	char 				deviceid[12];
+
+	int				model;		//Éè±¸ĞÍºÅ
+	int				firmware;	
+
+	ss_malfunction_t	HWTtest;
+	ss_maldetect_t		malDetect;
+
+
+	char				macwifi[20];
 	CS			 	config;
 	SS_sense 	sense;
-	IR				ir;
-	SC				sc[5];//Ôİ¶¨£¬Ò»¸öSSÏÂ×î¶à¹Ò5¸ösc
-	ST				st[20];//Ôİ¶¨£¬Ò»¸öSSÏÂ×î¶à¹Ò20¸öst
-	u8				posted;//Îª1Ê±±íÊ¾ÒÑ¾­ÓÉssÍÆËÍ¸øesh,Îª0±íÊ¾»¹Ã»ÓĞ
+	SC				sc[SC_NUMS_OF_SS];//Ôİ¶¨£¬Ò»¸öSSÏÂ×î¶à¹Ò5¸ösc
+	ST				st[ST_NUMS_OF_SS];//Ôİ¶¨£¬Ò»¸öSSÏÂ×î¶à¹Ò20¸öst
+
+	u8 				alarm_level;
+
+	ss_status_t		flag;
+	
 }SS;
+
+
+
 
 typedef struct
 {
@@ -352,52 +527,16 @@ typedef struct
 	u16				meshid;//´ËÎªÒªÅäÖÃµÄstµÄmeshid,Ğè×Ô¼º²éÕÒËùÓĞstµÄdeviceIdÀ´µÃµ½
 }CST;	//config st data struct
 
+
+
+
+
 typedef struct
 {
 	char sepid[12];
 	char ch[2];
 }DES;	//device status data struct
 
-typedef struct
-{
-	char sepid[12];
-	int  MDID;
-	int  MDID2;
-	int  MDID3;
-	int  MDID4;
-	int  MDID5;
-	int  MDID6;
-	int  MDID7;
-	int  MDID8;
-	int  MDID9;
-	int  MDID10;
-	int  MDID11;
-	int  MDID12;
-	int  MDID13;
-	int  MDID14;
-	int  MDID15;
-	int  CH;
-	int  CH2;
-	int  CH3;
-	int  CH4;
-	int  CH5;
-	int  CH6;
-	int  CH7;
-	int  CH8;
-	int  CH9;
-	int  CH10;
-	int  CH11;
-	int  CH12;
-	int  CH13;
-	int  CH14;
-	int  CH15;
-	char action[4];
-	int  topos;
-	int  duration;
-	int  type;
-	char code[10];
-	char raw[500];
-}QE;
 
 typedef struct
 {
@@ -436,167 +575,261 @@ typedef struct
 		int  	option_erase;
 		int  	timeout;
 	}gt;
-}RT;
+	
+}RT;	//real time reporting STµÄÔË¶¯ĞÅÏ¢£¬°üº¬½Ó½ü¡¢ÓÃµçÁ¿¡¢´¥Ãş°´¼ü¡¢ÊÖÊÆÊ¶±ğ
+
+
+
+
+COM4004_EXT u8  		DMA_Rece_Buf[DMA_BUF_LEN];	   		/* DMA½ÓÊÕ´®¿ÚÊı¾İ»º³åÇø */
+COM4004_EXT u16 	Usart1_Rec_Cnt;             			/* ±¾Ö¡Êı¾İ³¤¶È	*/
+COM4004_EXT u8  		Usart1_Send_Buf[USART1_TXBUF_LEN];	/* ·¢ËÍ»º³åÇø */
+COM4004_EXT u16 	Usart1_Send_Length;				/* uart1Òª·¢ËÍµÄ³¤¶È */
+COM4004_EXT u16 	Usart1_Send_Cnt;					/* uart1Êµ¼ÊÒÑ·¢ËÍµÄ³¤¶È¼ÆÊı */
+COM4004_EXT u16 	Usart1_Delay_Cnt;					/* ½ÓÊÕµ½4004µÄÍêÕûÊı¾İºó´Ó0¿ªÊ¼¼ÆÊı£¬Ã¿2ms¼Ó1£¬µ±Ê±¼ä³¬¹ı20msÊ±²»ÄÜ·¢ËÍÊı¾İ */
+
+
+COM4004_EXT Txmessage 	Txto4004;					//·¢ËÍ¸ø4004µÄ½á¹¹Ìå»º´æ£¬Ã¿´Î·¢ËÍ¶¼¸üĞÂ¸ÃÊı¾İ½á¹¹
+COM4004_EXT Rxmessage 	Rxfr4004;					//½ÓÊÕµ½4004µÄ½á¹¹Ìå»º´æ£¬Ã¿´Î½ÓÊÕºó¶¼¸üĞÂ
+COM4004_EXT SS				ss;						//±¾ss¹ÜÀíµÄËùÓĞÊı¾İ
+COM4004_EXT AB 				ss_ab;				//action backlightÊı¾İ»º´æ
+COM4004_EXT CS				ss_cs;				//config ssÊı¾İ»º´æ
+COM4004_EXT AR				ss_ar;				//action refreshÉî¶ÈÖ¸Áî
+
+COM4004_EXT RT				ss_rt;				//rtÖ¸Áî
+
+
+
+COM4004_EXT union  FLAG 		UART1Flag1_;
+#define UART1Flag1 				UART1Flag1_._flag_byte
+#define rev_success				UART1Flag1_._flag_bit.bit0	//ÓÃÓÚ½ÓÊÕÊı¾İ·ÖÎö
+#define ack_ar						UART1Flag1_._flag_bit.bit1	//ÓÃÓÚ»Ø¸´action refreshË¢ĞÂËùÓĞ´«¸ĞÆ÷
+#define rev_ar1					UART1Flag1_._flag_bit.bit2	//½ÓÊÕµ½action/refreshË¢ĞÂSS´«¸ĞÆ÷Ö¸Áî
+#define rev_ar2					UART1Flag1_._flag_bit.bit3	//½ÓÊÕµ½action/refreshË¢ĞÂST´«¸ĞÆ÷Ö¸Áî
+
+COM4004_EXT union  FLAG 		UART1Flag2_;
+#define UART1Flag2 				UART1Flag2_._flag_byte
+#define ack_ab					UART1Flag2_._flag_bit.bit0	//»Ø¸´action backlight
+#define ack_dr						UART1Flag2_._flag_bit.bit1	//»Ø¸´data recentÇ¿ÖÆË¢ĞÂ´«¸ĞÆ÷Êı¾İ²¢»ñÈ¡
+#define ack_cm					UART1Flag2_._flag_bit.bit2	//»Ø¸´config mesh
+#define rev_st_rt					UART1Flag2_._flag_bit.bit3	//½ÓÊÕµ½st·¢³ö¼ì²âµ½ÔË¶¯
+
+
+
+COM4004_EXT u8 rev_buf[MAX_BUF_LEN];	//½ÓÊÕµ½4004µÄÒ»°üÊı¾İ£¬°üÀ¨°üÍ·BB BB °üÎ²0A 0A£¬¼°ÆäËû¿ÉÄÜ»ì¼ÓÔÚ°üÍ·Ö®Ç°°üÎ²Ö®ºóµÄÊı¾İ
+COM4004_EXT u8 ssp_buf[MAX_BUF_LEN];	//ÕæÕıµÄ4004µÄÓĞĞ§Êı¾İ²¿·Ö£¬È¥µô°üÍ·BB BB °üÎ²0A 0A¼°ÆäËûÎŞĞ§Êı¾İ
+COM4004_EXT u16 ssp_length;			//Ò»°ü4004µÄÊı¾İ³¤¶È£¬¼°Ğ­ÒéÖĞremaining length³¤¶È
+
+
+
+
+typedef enum
+{
+	GESTURE_REPORT = 1,
+	KEYPAD_REPORT,
+	SLIPPAD_REPORT,
+	
+}REPORT_TYPE;	
+
+
+
+typedef enum
+{
+	DEVICE_NULL = 0,			
+	DEVICE_SC,			
+	DEVICE_ST,		
+	DEVICE_SL,
+	DEVICE_SP,
+	DEVICE_SS,
+	
+	
+}DEVICE_TYPE;	
+
+
+typedef enum
+{
+	SSP_POST = 1,			
+	SSP_GET,		
+	
+}SSP_SEND_TYPE;	
+
+
+
+#define 	RECEIPT_CODE_SUCCESS		0x0200000
+#define 	RECEIPT_CODE_ANALYZE_OK	0x0200001
+
+#define 	RECEIPT_CODE_FAILED			0x0400000
+#define 	RECEIPT_CODE_ANALYZE_ERROR	0x0400001
+
+#define 	RECEIPT_CODE_ERROR			0x0401F08
+
+
+
+#define 	DEVICE_LEGALITY_CHECK_TIME		5
+
+
+typedef struct
+{	
+	int flag;		/* Îª1Ê±±íÊ¾Éè±¸ÁĞ±íÓĞĞ§ */
+
+	int times;		/* ¿ØÖÆÃ¿DEVICE_LEGALITY_CHECK_TIMEÃë½øĞĞÒ»´Î¼ì²é */
+
+
+/*----------------------------------------------------------------------------
+	ss, sl,sp, st ¾ùÎªÊı×éÀàĞÍ£¬¸ñÊ½ÈçÏÂ
+	
+	 [
+	 	{
+			"deviceID": "SLS1GS2F",
+		},
+
+		{
+			"deviceID": "SLS1GS2F",
+		}
+	]
+	
+-----------------------------------------------------------------------------*/
+
+	u8		scBroadcastRecvFlag[SC_NUMS_OF_SS];		/* ¹ã²¥½ÓÊÕ±êÖ¾ */
+	u8		stBroadcastRecvFlag[ST_NUMS_OF_SS];
+
+	u8		scDeviceID[SC_NUMS_OF_SS][4];
+	u8		stDeviceID[ST_NUMS_OF_SS][4];
+
+
+	int		scSize;
+	int		stSize;		
+
+	cJSON	*sc;
+	cJSON	*st;
+	cJSON	*sl;
+	cJSON	*sp;
+
+}devList_t;	//alarm 
+
+extern devList_t devList;
+
+
+
+//ÓÃÀ´½âÎötopic
+typedef struct topic_t {
+	
+	struct topic_t *next;		
+	
+	char *string;		//×Ö·û´®
+	
+	int 	len;			//×Ö·û´®³¤¶È
+	
+}topic_t;
+
+
+extern topic_t *topic_head;
+extern topic_t *topic_last;
+
+
+//¡®/¡¯Óë¡®/¡¯Ö®¼äµÄ×Ö·û´®³¤¶ÈÄ¬ÈÏ²»³¬¹ı100
+#define 	SINGLE_STRING_LENGTH_OF_TOPIC		10
+
 
 typedef struct
 {
-	char sepid[12];
-	int  level;
-}ALARM;
 
+	char 	sepid[12];
+	char 	action[4];
 
-COM4004_EXT u8  DMA_Rece_Buf[DMA_Rec_Len];	   //DMA½ÓÊÕ´®¿ÚÊı¾İ»º³åÇø
-COM4004_EXT u16 Usart1_Rec_Cnt;             	//±¾Ö¡Êı¾İ³¤¶È	
-COM4004_EXT u8  USART1_Send_Buf[Send_Len];		//·¢ËÍ»º³åÇø
-COM4004_EXT u16 Usart1_Send_Length;
-COM4004_EXT u16 Usart1_Send_Cnt;
-COM4004_EXT u8  Usart1_Send_Done;
+	u8	mdid_channel[16];
 
+	u16	meshid;		//sepid¶ÔÓ¦µÄmeshid
+	u8	cmd;		//ÃüÁîÖµ
+	
+	u8  	topos;		//¿ØÖÆÖµ
+	u8  	duration;		//µ÷¹âÊ±¼ä
+	
+	int 	type;			//qeÖĞaction/URµÄtype
+	char 	code[10];			//qeÖĞaction/URµÄcode
+//	char 	raw[SINGLE_STRING_LENGTH_OF_TOPIC];		//qeÖĞaction/URµÄraw
 
-COM4004_EXT Txmessage Txto4004;
-COM4004_EXT Rxmessage Rxfr4004;
-COM4004_EXT SS				ss;
-COM4004_EXT AP 				ss_ap;				//action peform
-COM4004_EXT u8				ss_ap_message_id_H;
-COM4004_EXT u8				ss_ap_message_id_L;
-COM4004_EXT AB 				ss_ab;				//action backlight
-COM4004_EXT SS_sense	ss_sensedata;	//data sync	,data rscent
-COM4004_EXT	CS				ss_cs;
-COM4004_EXT AR				ss_ar;				//action refreshÉî¶ÈÖ¸Áî
-COM4004_EXT DS				ss_ds;				//data syncÉî¶ÈÖ¸Áî
-COM4004_EXT CST				ss_cst[20];		//config stÔ¤Áô1´Î×î¶àÅäÖÃ6Ìõst
-COM4004_EXT u8				ss_cst_count;	//Êµ¼Êconfig stÅäÖÃÁËss_cst_countÌõstĞÅÏ¢
-COM4004_EXT DES				ss_des;				//device statusÉî¶ÈÖ¸Áî
-COM4004_EXT u8				ss_des_message_id_H;
-COM4004_EXT u8				ss_des_message_id_L;
-COM4004_EXT QE				ss_qe;				//qeÉî¶ÈÖ¸Áî
-COM4004_EXT u8				ss_qe_message_id_H;
-COM4004_EXT u8				ss_qe_message_id_L;
-COM4004_EXT RT				ss_rt;				//rtÖ¸Áî
-COM4004_EXT ALARM			ss_alarm;			//alarmÉî¶ÈÖ¸Áî
-COM4004_EXT CSHP			ss_cshp[20];	//config strategy hpstÖ¸Áî,Ôİ¶¨×î¶à±£´æ20Ìõstrategy hpstÃüÁî
-COM4004_EXT u8				ss_csht_stid;	//config strategy hpspÖ¸Áî£¬±£´æstid
-
-COM4004_EXT u8				ss_di_message_id_H;//½ÓÊÕµ½data/irÖ¸Áî£¬±£´æmessage id£¬ÒòĞèÒª»Ø¸´3ÌõÖ¸Áî
-COM4004_EXT u8				ss_di_message_id_L;
-
-COM4004_EXT union  FLAG 		UART1Flag1_;
-#define UART1Flag1 					UART1Flag1_._flag_byte
-#define rev_success					UART1Flag1_._flag_bit.bit0	//ÓÃÓÚ½ÓÊÕÊı¾İ·ÖÎö
-#define ack_ap_rev_success	UART1Flag1_._flag_bit.bit1	//ÓÃÓÚ»Ø¸´action perform
-#define ack_ap_exe_success	UART1Flag1_._flag_bit.bit2	//ÓÃÓÚ»Ø¸´action perform
-#define ack_ap_exe_fail			UART1Flag1_._flag_bit.bit3	//ÓÃÓÚ»Ø¸´action perform
-#define ack_ap_exe_done			UART1Flag1_._flag_bit.bit4	//ÓÃÓÚ»Ø¸´action perform
-#define ack_ar							UART1Flag1_._flag_bit.bit5	//ÓÃÓÚ»Ø¸´action refreshË¢ĞÂËùÓĞ´«¸ĞÆ÷
-#define rev_ar1							UART1Flag1_._flag_bit.bit5	//½ÓÊÕµ½action/refreshË¢ĞÂSS´«¸ĞÆ÷Ö¸Áî
-#define rev_ar2							UART1Flag1_._flag_bit.bit5	//½ÓÊÕµ½action/refreshË¢ĞÂST´«¸ĞÆ÷Ö¸Áî
-#define ack_ds							UART1Flag1_._flag_bit.bit6	//ÓÃÓÚ»Ø¸´data sync»ñÈ¡ËùÓĞ´«¸ĞÆ÷
-#define ack_ds2							UART1Flag1_._flag_bit.bit7	//ÓÃÓÚ»Ø¸´data syncÉî¶ÈÍ¬²½Ö¸Áî»ñÈ¡Ä³¸ö´«¸ĞÆ÷
-
-COM4004_EXT union  FLAG 		UART1Flag2_;
-#define UART1Flag2 					UART1Flag2_._flag_byte
-#define ack_ab							UART1Flag2_._flag_bit.bit0	//»Ø¸´action backlight
-#define ack_dr							UART1Flag2_._flag_bit.bit1	//»Ø¸´data recentÇ¿ÖÆË¢ĞÂ´«¸ĞÆ÷Êı¾İ²¢»ñÈ¡
-#define ack_dir_rev_success	UART1Flag2_._flag_bit.bit2	//»Ø¸´data irÊÕµ½»ñÈ¡IRÊı¾İÇëÇó
-#define ack_dir_reving			UART1Flag2_._flag_bit.bit3	//»Ø¸´data ir¿ªÊ¼¿ªÊ¼½ÓÊÕirÊı¾İ
-#define ack_dir_rev_done		UART1Flag2_._flag_bit.bit4	//»Ø¸´data ir³É¹¦½ÓÊÕIRÊı¾İ
-#define ack_cs							UART1Flag2_._flag_bit.bit5	//»Ø¸´config ss(°üº¬Éî¶ÈÍ¬²½Ö¸Áî),»Ø¸´½ÓÊÕ»ØÖ´
-#define ack_dl							UART1Flag2_._flag_bit.bit6	//»Ø¸´device list
-#define ack_cm							UART1Flag2_._flag_bit.bit7	//»Ø¸´config mesh
-
-COM4004_EXT union  FLAG 		UART1Flag3_;
-#define UART1Flag3 					UART1Flag3_._flag_byte
-#define ack_cst							UART1Flag3_._flag_bit.bit0	//»Ø¸´config st
-#define ack_des							UART1Flag3_._flag_bit.bit1	//»Ø¸´device status
-#define ack_des2						UART1Flag3_._flag_bit.bit2	//»Ø¸´device statusÉî¶ÈÖ¸Áî£¬»Ø¸´Ä³Ò»¸ösepÏÂËùÓĞÍ¨µÀÊı¾İ
-#define ack_des3						UART1Flag3_._flag_bit.bit3	//»Ø¸´device statusÉî¶ÈÖ¸Áî£¬»Ø¸´Ä³Ò»¸ösepÏÂÄ³¸öÍ¨µÀÊı¾İ
-#define ack_diss						UART1Flag3_._flag_bit.bit4	//»Ø¸´device info ss
-#define ack_qe							UART1Flag3_._flag_bit.bit5	//»Ø¸´qeÉî¶ÈÖ¸Áî
-#define ack_alarm						UART1Flag3_._flag_bit.bit6	//»Ø¸´qeÉî¶ÈÖ¸Áî
-#define ack_cshp						UART1Flag3_._flag_bit.bit7	//»Ø¸´config strategy hpstÖ¸Áî
-
-
-COM4004_EXT union  FLAG 		UART1Flag4_;
-#define rev_success2				UART1Flag4_._flag_bit.bit0
-#define ack_csht						UART1Flag4_._flag_bit.bit1	//»Ø¸´config strategy htspÖ¸Áî
-
-
-COM4004_EXT union  FLAG 		UART1Flag5_;
-
-
-COM4004_EXT union  FLAG 		UART1Flag6_;
-
-
-COM4004_EXT union  FLAG 		UART1Flag7_;
-#define UART1Flag7 					UART1Flag7_._flag_byte
-#define ready_ss_post				UART1Flag7_._flag_bit.bit0	//ÍÆËÍss×ÔÉíÊı¾İ
-#define ready_st_post				UART1Flag7_._flag_bit.bit1	//ÍÆËÍst×ÔÉíÊı¾İ£¬ÔÚuart2½«stÊı¾İ´æ´¢ÔÚss.sc[]ºóÖÃÎ»
-#define ready_sc_post				UART1Flag7_._flag_bit.bit2	//ÍÆËÍsc×ÔÉíÊı¾İ
-#define ready_slc_post			UART1Flag7_._flag_bit.bit3	//ÍÆËÍslc×ÔÉíÊı¾İ
-#define ready_spc_post			UART1Flag7_._flag_bit.bit4	//ÍÆËÍspc×ÔÉíÊı¾İ
-#define rev_st_mal					UART1Flag7_._flag_bit.bit5	//½ÓÊÕµ½ST»ã±¨¹ÊÕÏ
-#define rev_sc_mal					UART1Flag7_._flag_bit.bit6	//½ÓÊÕµ½SC»ã±¨¹ÊÕÏ
-#define rev_slc_mal					UART1Flag7_._flag_bit.bit7	//½ÓÊÕµ½SLC»ã±¨¹ÊÕÏ
-
-COM4004_EXT union  FLAG 		UART1Flag8_;
-#define rev_spc_mal					UART1Flag8_._flag_bit.bit0	//½ÓÊÕµ½SPC»ã±¨¹ÊÕÏ
-#define rev_heartbeat				UART1Flag8_._flag_bit.bit1	//½ÓÊÕµ½Heartbeat°ü
-#define rev_st_rt						UART1Flag8_._flag_bit.bit2	//½ÓÊÕµ½st·¢³ö¼ì²âµ½ÔË¶¯
-
-COM4004_EXT u16 ready_sc_post_meshid;//×¼±¸ÍÆËÍµÄsc¶ÔÓ¦µÄmeshid,SCºÍSTÍ¨¹ımeshidÀ´Ê¶±ğ
-COM4004_EXT u16 ready_st_post_meshid;//×¼±¸ÍÆËÍµÄst¶ÔÓ¦µÄmdid
-COM4004_EXT u8 ready_slc_post_mdid;//×¼±¸ÍÆËÍµÄslc¶ÔÓ¦µÄmdid
-COM4004_EXT u8 ready_spc_post_mdid;//×¼±¸ÍÆËÍµÄspc¶ÔÓ¦µÄmdid
-
-COM4004_EXT u8 send_buf[100];
-COM4004_EXT u8 rev_buf[MAX_BUF_LEN];
-COM4004_EXT u8 ssp_buf[MAX_BUF_LEN];
-COM4004_EXT u16 ssp_length;
+	
+}qe_t;		
 
 
 
-COM4004_EXT u8 random(u8 xxx);
-COM4004_EXT void UART2_Send_Data_Init(void);
-COM4004_EXT void UART2_Send_Data_Start(void);
-COM4004_EXT int test_cjson(void);
-COM4004_EXT int mystrcmp(unsigned char *str1,const unsigned char *str2);
-COM4004_EXT void rev_analyze(u8 *topic_buf,u8 *cjson_buf);
-COM4004_EXT void mystrncat(char *desc,char *src,u32 len);
-COM4004_EXT u8 ssp_parse(u8 *buf,u16 buf_len);
-COM4004_EXT void analyze(void);
-COM4004_EXT void success_receipt(void);
-COM4004_EXT void send_message_without_payload(u8 fix1,u8 version,u8 message_id_h,u8 message_id_l,u8 ex_message_id);
-COM4004_EXT void send_message_with_payload(u8 fix1,u8 version,u8 message_id_h,u8 message_id_l,u8 *payload);
-COM4004_EXT void send_message(Txmessage *tx);
-COM4004_EXT void clear_tx_buf(void);
-void init_tx_message(u8 first_ch_byte,u8 version,u8 topic_len,char *topic,u8 message_id_H,u8 message_id_L,u8 ext_message_id,char *payload);
-COM4004_EXT void init_send_Txmessage(_REPLY_ type);
-COM4004_EXT void rev_heart_beat(u8 fix1);
-COM4004_EXT void rev_action_perform(void);
-COM4004_EXT void rev_qe(void);
-COM4004_EXT void rev_device_status(void);
-COM4004_EXT void deal_action_perform(u8 *buf);
+
+extern qe_t ssp_qe;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+u16 ssp_get_message_id(void);
+
+
 COM4004_EXT void deal_config_ss(u8 *buf);
+COM4004_EXT void send_config_ss(void);
 COM4004_EXT void deal_deepsyn_config_ss(u8 *buf1,u8 *buf2);
+
 COM4004_EXT void deal_action_backlight(u8 *buf);
 COM4004_EXT void deal_action_refresh(u8 *buf);
-COM4004_EXT	void deal_data_sync(u8 *buf);
-COM4004_EXT void deal_device_list(u8 *buf);
-COM4004_EXT void deal_config_mesh(u8 *buf);
-COM4004_EXT void deal_config_st(u8 *buf);
-COM4004_EXT void deal_config_stragy_hpst(u8 *buf);
-COM4004_EXT void deal_config_strategy_htsp(u8 *buf);//bufÊÇtopicÄÚÈİ
-COM4004_EXT void deal_device_status(u8 *buf);
-COM4004_EXT void send_device_status(u8 *deviceid);	//´«ÈëdeviceidÊÇSLC»òSPCµÄdevice id
-COM4004_EXT void deal_qe(u8 *buf);
-COM4004_EXT void dela_alarm(u8 *buf);
 
-COM4004_EXT void send_config_ss(void);
-COM4004_EXT void send_data_sync(u8 type);
-COM4004_EXT void send_deepin_data_sync(void);
-COM4004_EXT void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L);
-COM4004_EXT void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L);
-COM4004_EXT void send_device_malfunction(void);
+COM4004_EXT void deal_config_mesh(u8 *buf);
+COM4004_EXT void deal_config_stragy_hpst(u8 *buf);
+COM4004_EXT void deal_config_strategy_htsp(u8 *buf);		
+
+
+void send_rt(void);
+
+
+void ssp_action_learn_ir(void);
+
+
+u8 random(u8 xxx);
+int mystrcmp(unsigned char *str1,const unsigned char *str2);
+void mystrncat(char *desc,char *src,u32 len);
+
+
+
+
+void ssp_data_sync(SSP_SEND_TYPE type);
+
+
+void ssp_device_info_ss(SSP_SEND_TYPE type, u16 msgid);
+void ssp_device_info_sub_response(u16 msgid);
+
+void ssp_device_status_post(DEVICE_TYPE devType, u8 i);
+void ssp_device_status_response(u8 *buf);
+
+void ssp_device_malfunction_response(u16 msgid);
+void ssp_device_malfunction_post(DEVICE_TYPE devType, u8 num, u8 mdid);
+void ssp_device_malfunction_detect(void);
+
+
+void ssp_device_list_recv(u8 *payload);
+
+
+void ssp_energy_consum_post(u8 sc_num, u8 addr);
+void ssp_motion_detect_post(void);
+void ssp_smoke_detect_post(u8 value);
+void ssp_gesture_or_keypad_post(u8 st_num, REPORT_TYPE type, u8 keyPad, u16 value);
+
+void ssp_recepit_response(int code);
+void ssp_check_device_legality(void);
+
+
+void recv_4004_analyze(void);
+void ssp_send_message(u8 first_ch_byte,u8 version,u8 topic_len,char *topic, u16 msgid,u8 ext_message_id,char *payload);
+
+
+
+void ssp_send_data_active(void);
 
 
 #endif

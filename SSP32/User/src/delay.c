@@ -40,6 +40,8 @@ void delay_init(void)
 #endif
 }								    
 
+
+
 #ifdef OS_CRITICAL_METHOD	//使用了ucos
 //延时nus
 //nus为要延时的us数.		    								   
@@ -77,7 +79,11 @@ void delay_ms(u16 nms)
 	}
 	delay_us((u32)(nms*1000));	//普通方式延时,此时ucos无法启动调度.
 }
+
+
 #else//不用ucos时
+
+
 //延时nus
 //nus为要延时的us数.		    								   
 void delay_us(u32 nus)
@@ -114,6 +120,8 @@ void delay_ms(u16 nms)
 	SysTick->CTRL&=~SysTick_CTRL_ENABLE_Msk;       //关闭计数器
 	SysTick->VAL =0X00;       //清空计数器	  	    
 } 
+
+
 #endif
 
 

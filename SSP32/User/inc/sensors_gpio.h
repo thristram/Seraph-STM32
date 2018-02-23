@@ -22,10 +22,11 @@
 
 
 
+/* 2s */
+//#define MOTION_CLEAR_TIME		200
 
-
-
-
+/* 5s */
+#define MOTION_CLEAR_TIME		500
 
 
 
@@ -38,7 +39,7 @@ void PM25_EXTI_init(void);
 
 
 void PYD1798_gpio_init(void);
-void PYD1798_readdigipyro(void);
+void PYD1798_readdigipyro_1(void);
 void PYD1798_check(void);
 
 

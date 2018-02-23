@@ -1,0 +1,7 @@
+---- smokeModule_value Matches (6 in 3 files) ----
+Com4004.c (d:\fyl\wp\ssp32\user\src):			cJSON_AddNumberToObject(sub_cs, "SM", sensors_value.smokeModule_value);
+Sensors.h (d:\fyl\wp\ssp32\user\inc):	u8 	smokeModule_value;		/* 烟雾 */
+Sensors_gpio.c (d:\fyl\wp\ssp32\user\src)://		sensors_value.smokeModule_value = 1;		
+Sensors_gpio.c (d:\fyl\wp\ssp32\user\src):		sensors_value.smokeModule_value = 0;		/* hcb，2018.1.25 烟雾实际正常输出是高电平 */	
+Sensors_gpio.c (d:\fyl\wp\ssp32\user\src)://		sensors_value.smokeModule_value = 0;	
+Sensors_gpio.c (d:\fyl\wp\ssp32\user\src):		sensors_value.smokeModule_value = 1;		/* 低电平时表示有烟雾 */

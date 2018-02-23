@@ -49,7 +49,7 @@
 
 ------------------------------------------------------------------------*/
 
-#define CO2_TXRX_BUF_LEN	12
+#define CO2_TXRX_BUF_LEN		12
 #define CO2_TXRX_DATA_LEN	9
 
 typedef struct
@@ -101,6 +101,8 @@ void CO2_setr_config(uint16_t setrValue);
 void CO2_SPAN_config(uint16_t spanValue);
 
 
+
+void CO_init(void);
 
 
 

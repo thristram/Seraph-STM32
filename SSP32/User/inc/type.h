@@ -9,6 +9,8 @@
 #define  TYPE_EXT 
 #endif
 #include "sys.h"
+
+
 union FLAG   
 {
     struct

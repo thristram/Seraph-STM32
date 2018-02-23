@@ -1,11 +1,24 @@
 
 /* Includes ------------------------------------------------------------------*/
 #define _COM4004_GLOBAL
+
 #include "includes.h"
 #include <stdlib.h>
+#include "sensors.h"
+#include "ir.h"
 
 
-int mystrcmp(unsigned char *str1,const unsigned char *str2)
+devList_t devList = {0};
+
+/* ÓÃÀ´½âÎöqeÖ¸Áî */
+qe_t ssp_qe = {0};
+
+/* ÓÃÀ´½âÎötopic */
+topic_t *topic_head = NULL;
+topic_t *topic_last = NULL;
+
+
+int mystrcmp(unsigned char *str1, const unsigned char *str2)
 {
 	int ret=0;
 	while(!(ret=(*(unsigned char *)str2 - *(unsigned char *)str1)&&*str2))
@@ -14,9 +27,10 @@ int mystrcmp(unsigned char *str1,const unsigned char *str2)
 		str2++;
 	}
 	if(ret<0)
-	ret=-1;
+		ret=-1;
 	else if(ret>0)
-	ret=1;
+		ret=1;
+	
 	return ret;
 }
 
@@ -40,244 +54,1240 @@ u8 random(u8 xxx)
   u8 value,iii;  
   for(iii=0;iii<xxx;iii++)  
   {  
-    value = rand() % (MAX + 1- MIN) + MIN; //²úÉúËæ»úÊý1~255
+    value = rand() % (RANDOM_MAX_NUM + 1- RANDOM_MIN_NUM) + RANDOM_MIN_NUM; //²úÉúËæ»úÊý1~255
 	}  
   return value;  
 } 
 
 
 
-void analyze(void)
+/*----------------------------------------------------------------------------
+	
+-----------------------------------------------------------------------------*/
+u16 ssp_get_message_id(void)
 {
-	if (rev_success)
-	{
-		rev_success = 0;
-		if(ssp_buf[2] == 0x41)	{rev_heartbeat = 1;rev_heart_beat(0x83);}
-		else if(ssp_parse(ssp_buf,ssp_length))
-		{
-			rev_analyze(Rxfr4004.rx_var_header.topic,Rxfr4004.rx_payload);
-		}
-		//½ÓÊÕµ½µÄÊý¾Ý¿ÉÄÜÊÇsspÐÄÌø°ü/Êý¾Ý°ü/4004ÐÄÌø°ü
-		if(uartTxSLHead){//Á´±íÍ·²»Îª¿Õ
-			Usart1_Send(uartTxSLHead->data,uartTxSLHead->len); //uartTxSLHead->haswriteÔÚÖÐ¶ÏÖÐ´¦Àí
-		}
+	static u16 id = 0;
+	
+	id++;
+
+	if(id == 0){
+		id = 1;
 	}
+
+	return id;
 }
 
-//½âÎössp_bufÄÚÈÝ£¬´æµ½Rxfr4004½á¹¹ÌåÖÐ
-u8 ssp_parse(u8 *buf,u16 buf_len)
+
+/*----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------*/
+void ssp_data_st_to_sicp_message(u8 st_num)
+{
+	u8 len = 0, cnt = 0;
+	SICP_Message msg;
+	
+	msg.frame_h1 = 0xEE;
+	msg.frame_h2 = 0xEE;
+	msg.message_id = sicp_get_message_id();
+	msg.mesh_id_H = (u8)(ss.st[st_num].meshid >> 8);
+	msg.mesh_id_L = (u8)(ss.st[st_num].meshid & 0xff);
+	msg.payload[0] = 0x37;	
+	msg.payload[1] = ss.st[st_num].level1;
+	msg.payload[2] = ss.st[st_num].level2;
+	
+	sicp_send_message(&msg, 3, 1);
+		
+}
+
+/*-------------------------------------------------------------------------
+    ÒªÇó±ØÐëÒª¼ì²âµ½4¸ökeyÖµ
+-------------------------------------------------------------------------*/
+void ssp_data_st(u8 *payload)
+{
+	cJSON *root, *tmp, *devjson, *onejson, *newjson;
+	int i, devsize, ret = RECEIPT_CODE_FAILED;
+	u8 num, level1, level2, cnt = 0;
+	
+	root = cJSON_Parse((char*)payload);
+	if(root){
+		
+		devjson = root->child;
+		while(devjson){
+			
+			cnt = 0;			
+			num = get_series_number(GET_SERIES_WHEN_EXSIT, GET_SERIES_ST, 0, devjson->string); 
+			if(num != GET_SERIES_ERROR){
+				level1 = 0;				
+				level2 = 0;
+				tmp = cJSON_GetObjectItem(devjson, "key0");
+				if(tmp){
+					cnt++;
+					if(tmp->valueint == (-1)){
+						level1 |= ((MPR121_LONG_TOUCH_INVALID & 0x0f) << 4);
+					}else{					
+						level1 |= (u8)((tmp->valueint & 0x0f) << 4);
+					}
+				}
+				tmp = cJSON_GetObjectItem(devjson, "key1");
+				if(tmp){
+					cnt++;
+					if(tmp->valueint == (-1)){
+						level1 |= (MPR121_LONG_TOUCH_INVALID & 0x0f);
+					}else{					
+						level1 |= (u8)(tmp->valueint & 0x0f);
+					}
+				}				
+				tmp = cJSON_GetObjectItem(devjson, "key2");
+				if(tmp){
+					cnt++;
+					if(tmp->valueint == (-1)){
+						level2 |= ((MPR121_LONG_TOUCH_INVALID & 0x0f) << 4);
+					}else{					
+						level2 |= (u8)((tmp->valueint & 0x0f) << 4);
+					}
+				}
+				tmp = cJSON_GetObjectItem(devjson, "key3");
+				if(tmp){
+					cnt++;
+					if(tmp->valueint == (-1)){
+						level2 |= (MPR121_LONG_TOUCH_INVALID & 0x0f);
+					}else{					
+						level2 |= (u8)(tmp->valueint  & 0x0f);
+					}										
+				}
+
+				if(cnt == 4){			
+					ret = RECEIPT_CODE_SUCCESS;			/* Ö»ÒªÓÐÒ»¸öÉè±¸½âÎö³É¹¦¾Í»Ø¸´³É¹¦ */
+					if((level1 != ss.st[num].level1) || (level2 != ss.st[num].level2)){		/* ´æÔÚÓÐ²»Ò»ÑùµÄkey */
+						ss.st[num].level1 = level1;
+						ss.st[num].level2 = level2;
+						ssp_data_st_to_sicp_message(num);
+					}
+				}	
+				
+			}
+
+			devjson = devjson->next;
+
+		}
+
+		cJSON_Delete(root);
+
+	}
+
+	ssp_recepit_response(ret);	/* »Ø¸´receipt»ØÖ´ */	
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	//ÍÆËÍ´«¸ÐÆ÷Êý¾Ýst/sc/slc/slc¼°ss×ÔÉí´«¸ÐÆ÷
+	//typeÎª0x43Ê±ÎªÖ÷¶¯ÍÆËÍ£¬typeÎª0x83Ê±ÊÇ±»¶¯ÍÆËÍ(½ÓÊÕµ½/data/sync)
+-----------------------------------------------------------------------------*/
+void ssp_data_sync(SSP_SEND_TYPE type)
+{
+	u8 i;
+	cJSON *cs,*sub_cs;
+	char *payload;
+	char *topic;
+
+	if(type == SSP_GET) topic = "";
+	if(type == SSP_POST) topic = "/data/sync";
+	
+	cs = cJSON_CreateObject();    
+	if(cs ){
+		sub_cs=cJSON_CreateObject();
+		if(sub_cs){
+			cJSON_AddNumberToObject(sub_cs, "HM", (int)sensors_value.sht3x.humidity);
+			cJSON_AddNumberToObject(sub_cs, "TP", (int)(sensors_value.sht3x.temperature * 10));
+			cJSON_AddNumberToObject(sub_cs, "PT", (int)sensors_value.pm25_density);
+			cJSON_AddNumberToObject(sub_cs, "SM", sensors_value.smokeModule_value);
+			cJSON_AddNumberToObject(sub_cs, "PR", 0);		//Î´ÓÐ´«¸ÐÆ÷
+			cJSON_AddNumberToObject(sub_cs, "CO", sensors_value.co_ppm);
+			cJSON_AddNumberToObject(sub_cs, "CD", sensors_value.co2_density);
+			cJSON_AddNumberToObject(sub_cs, "VO", sensors_value.voc_ppm);
+			cJSON_AddItemToObject(cs, ss.deviceid, sub_cs);
+
+		}
+
+		for(i = 0; i < ST_NUMS_OF_SS; i++){
+			if(ss.st[i].meshid){		
+				sub_cs=cJSON_CreateObject();
+				if(sub_cs){
+					cJSON_AddNumberToObject(sub_cs, "CS", ((int)ss.st[i].sense.color_sense_H << 16) + ((int)ss.st[i].sense.color_sense_M << 8) + ss.st[i].sense.color_sense_L);
+					cJSON_AddNumberToObject(sub_cs, "AL", ss.st[i].sense.ambient_light);
+					cJSON_AddItemToObject(cs, ss.st[i].deviceid, sub_cs);			
+				}
+			}
+		}
+		
+		payload = cJSON_PrintUnformatted(cs);
+		if(payload){
+			if(type == SSP_GET) 	ssp_send_message(0x83, 1, 0, topic, Rxfr4004.rx_var_header.msgid, 0, payload);
+			if(type == SSP_POST) ssp_send_message(0x43, 1, 10, topic, ssp_get_message_id(), 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(cs);
+
+
+	}
+
+
+}
+
+
+/*----------------------------------------------------------------------------
+	qeÖ¸Áî×ª»¯³Ésicp´®¿ÚÊý¾Ý
+	ssp_qe
+-----------------------------------------------------------------------------*/
+void ssp_qe_to_sicp_message(void)
+{
+	u8 len = 0, cnt = 0;
+	SICP_Message msg;
+	
+	msg.frame_h1 = 0xEE;
+	msg.frame_h2 = 0xEE;
+	msg.message_id = sicp_get_message_id();
+	msg.mesh_id_H = (u8)(ssp_qe.meshid >> 8);
+	msg.mesh_id_L = (u8)(ssp_qe.meshid & 0xff);
+	msg.payload[0] = ssp_qe.cmd;
+	
+	switch(ssp_qe.cmd){
+		
+		case 0x51:
+		case 0x55:
+		case 0x56:
+			msg.payload[1] = ssp_qe.mdid_channel[0];
+			msg.payload[2] = ssp_qe.topos;
+			msg.payload[3] = ssp_qe.duration;
+			len = 4;
+			break;
+			
+		case 0x57:
+		case 0x58:			
+			cnt = 0;
+			while(ssp_qe.mdid_channel[cnt]){
+				msg.payload[cnt + 2] = ssp_qe.mdid_channel[cnt];
+				cnt++;			
+			}
+			msg.payload[cnt + 2] = ssp_qe.topos;
+			msg.payload[cnt + 3] = ssp_qe.duration;			
+			msg.payload[1] = cnt;
+			len = cnt + 4;
+			break;
+
+		default:
+			break;
+			
+	}
+	
+	sicp_send_message(&msg, len, 1);
+		
+}
+
+
+/*----------------------------------------------------------------------------
+	qeÖ¸Áî×ª»¯³Ésicp´®¿ÚÊý¾Ý
+	ssp_qe
+-----------------------------------------------------------------------------*/
+void ssp_qe_to_sicp_cmd(void)
+{
+	u8 num;
+	
+	ssp_qe.cmd = 0;
+	
+	if(ssp_qe.action[0] == 'D' || ssp_qe.action[0] == 'W' ){			/* DM, WP, DMM, WPM */
+
+		num = get_series_number(GET_SERIES_WHEN_EXSIT, GET_SERIES_SC, 0, ssp_qe.sepid); 
+		if(num != GET_SERIES_ERROR){
+			
+			ssp_qe.meshid = ss.sc[num].meshid;
+
+			if(ssp_qe.action[0] == 'D' && ssp_qe.action[1] == 'M' ){
+				
+				if(ssp_qe.action[2] == 0){
+					ssp_qe.cmd = 0x51;
+				}
+				if(ssp_qe.action[2] == 'M'){
+					ssp_qe.cmd = 0x57;
+				}
+			}		
+			if(ssp_qe.action[0] == 'W' && ssp_qe.action[1] == 'P' ){
+
+				if(ssp_qe.action[2] == 0){
+					ssp_qe.cmd = 0x55;
+				}
+				if(ssp_qe.action[2] == 'M'){
+					ssp_qe.cmd = 0x58;
+				}
+			}	
+			
+		}
+	}	
+		
+	if((ssp_qe.action[0] == 'C') && (ssp_qe.action[1] == 'P')){		//¿ìËÙÖ´ÐÐµÄÊÇST
+
+		num = get_series_number(GET_SERIES_WHEN_EXSIT, GET_SERIES_ST, 0, ssp_qe.sepid);	
+		if(num != GET_SERIES_ERROR){
+			ssp_qe.meshid = ss.st[num].meshid;
+			ssp_qe.cmd = 0x56;
+		}
+	}
+
+	if(ssp_qe.cmd){
+		ssp_qe_to_sicp_message();
+	}		
+	
+}
+
+
+
+/*----------------------------------------------------------------------------
+	//½âÎöqeÉî¶ÈÃüÁî
+	topic Îª´ÓqeÖ®ºó¿ªÊ¼, ×Ö·û´®µÄË³Ðò²»¿É¸Ä±ä
+	/qe/sepid/SCAA55AB80/action/DMM/MD/9,10/CH/3,3/topos/00/duration/20
+-----------------------------------------------------------------------------*/
+int ssp_qe_analyze(topic_t *topic)
+{
+	int cnt = 0;
+	int ret = 0;
+	u8 data;
+	topic_t *tmp;
+	char * pString;
+
+	if(!topic || !(topic->string)){return -1;}
+	
+	memset(&ssp_qe, 0, sizeof(ssp_qe));		//Çå¿Õssp_qe½á¹¹Ìå±äÁ¿
+
+	if(strcmp(topic->string, key_sepid) == 0){			/* sepid */
+		
+		tmp = topic->next;
+		if(tmp && tmp->string){	
+			
+			strcpy(ssp_qe.sepid, tmp->string);		/* SCAA55AB80 */
+
+			tmp = tmp->next;
+			if(tmp && tmp->string){ 			
+				if(strcmp(tmp->string, key_action) == 0){ 		/* action */
+					
+					tmp = tmp->next;
+					if(tmp && tmp->string){ 				
+
+						strcpy(ssp_qe.action, tmp->string);	/* DM, WP, UR , DMM, WPM */
+
+						if(*(tmp->string) == 'U' && *(tmp->string) == 'R'){		/* UR */
+							
+							ret = 0x10000000;
+							tmp = tmp->next;							
+							if(tmp && tmp->string){ 						
+								if(strcmp(tmp->string, "type") == 0){			/* type */
+									tmp = tmp->next;							
+									if(tmp && tmp->string){ 						
+										ret++;
+										ssp_qe.type = string_toDec(tmp->string);	
+									}									
+								}									
+							}
+
+							if(tmp){
+								tmp = tmp->next;							
+								if(tmp && tmp->string){ 						
+									if(strcmp(tmp->string, "code") == 0){		/* code */
+										tmp = tmp->next;							
+										if(tmp && tmp->string){ 						
+											ret++;
+//											strcpy(ssp_qe.code, tmp->string);	
+										}									
+									}									
+								}
+							}					
+						
+						}
+						else if(*(tmp->string) == 'C' && *(tmp->string) == 'P'){	/* CP */
+						
+							ret = 0x20000000;
+							tmp = tmp->next;							
+							if(tmp && tmp->string){ 						
+								if(*(tmp->string) == 'C' ){ 					/* C */
+									tmp = tmp->next;							
+									if(tmp && tmp->string){ 						
+										ret++;
+										ssp_qe.mdid_channel[0]= *(tmp->string) - '0';
+									}									
+								}									
+							}
+
+							if(tmp){
+								tmp = tmp->next;							
+								if(tmp && tmp->string){ 						
+									if(strcmp(tmp->string, "topos") == 0){					/* topos */
+										tmp = tmp->next;							
+										if(tmp && tmp->string){ 						
+											ret++;
+											if(*(tmp->string) == 'F' && *(tmp->string + 1) == 'F'){
+												ssp_qe.topos = 100;
+											}else{
+												ssp_qe.topos = (*(tmp->string) - '0') * 10 + (*(tmp->string + 1) -'0');
+											}							
+										}									
+									}									
+								}
+							}
+						}
+						else{											/* DM, WP, DMM, WPM */
+
+							ret = 0x30000000;
+				
+							tmp = tmp->next;							
+							if(tmp && tmp->string){ 						
+								if(*(tmp->string) == 'M' && *(tmp->string + 1) == 'D'){		/* MD */
+									tmp = tmp->next;							
+									if(tmp && tmp->string){ 						
+										ret++;
+										pString = tmp->string;
+										data = 0;
+										cnt = 0;
+										while(*pString){
+											
+											if(*pString == ','){										
+												ssp_qe.mdid_channel[cnt++] = (data << 4);										
+												data = 0;									
+											}else{
+												data = (data * 10) + (*pString - '0');
+											}
+											pString++;
+										}									
+										ssp_qe.mdid_channel[cnt] = (data << 4); 									
+									}									
+								}									
+							}
+
+							if(tmp){
+								tmp = tmp->next;							
+								if(tmp && tmp->string){ 						
+									if(*(tmp->string) == 'C' && *(tmp->string + 1) == 'H'){ 	/* CH */
+										tmp = tmp->next;							
+										if(tmp && tmp->string){ 						
+											ret++;
+											pString = tmp->string;
+											cnt = 0;
+											while(*pString){
+												
+												if(*pString != ','){											
+													ssp_qe.mdid_channel[cnt++] += (*pString - '0'); 									
+												}
+												pString++;
+											}								
+										}									
+									}									
+								}
+							}
+
+							if(tmp){
+								tmp = tmp->next;							
+								if(tmp && tmp->string){ 						
+									if(strcmp(tmp->string, "topos") == 0){					/* topos */
+										tmp = tmp->next;							
+										if(tmp && tmp->string){ 						
+											ret++;
+											if(*(tmp->string) == 'F' && *(tmp->string + 1) == 'F'){
+												ssp_qe.topos = 100;
+											}else{
+												ssp_qe.topos = (*(tmp->string) - '0') * 10 + (*(tmp->string + 1) -'0');
+											}							
+										}									
+									}									
+								}
+							}
+							
+							if(tmp){
+								tmp = tmp->next;							
+								if(tmp && tmp->string){ 						
+									if(strcmp(tmp->string, "duration") == 0){				/* duration */
+										tmp = tmp->next;							
+										if(tmp && tmp->string){ 						
+											ret++;
+											ssp_qe.duration = (u8)string_toDec(tmp->string);									
+										}									
+									}									
+								}
+							}						
+					
+						}
+
+					}
+						
+				}
+				
+			}
+
+		}
+		
+	}
+	return ret;
+	
+}
+
+
+/*----------------------------------------------------------------------------
+	//½âÎöalarmÉî¶ÈÖ¸Áî
+-----------------------------------------------------------------------------*/
+void ssp_alarm_analyze(topic_t *topic)		
+{
+	
+	if(!strcmp(topic->string, key_sepid)){				//sepid
+
+		if(topic->next){
+
+			topic = topic->next;
+
+			if(!strcmp(topic->string, ss.deviceid)){		//
+			
+				if(topic->next){
+			
+					topic = topic->next;
+						
+					if(!strcmp(topic->string, "lv")){		//
+					
+						if(topic->next){
+					
+							topic = topic->next;
+
+							ss.alarm_level = *(topic->string) -'0';
+							
+							ssp_recepit_response(RECEIPT_CODE_SUCCESS);
+							
+						}						
+					}
+		
+				}
+				
+				
+			}
+
+		}
+		
+	}
+
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	Çå¿ÕÄ³¸östÖÐµÄconfig_stÁ´±í
+-----------------------------------------------------------------------------*/
+void ssp_config_st_clear(u8 num)
+{
+	config_st_t *pNext;
+	
+	while(ss.st[num].config_head){		
+		
+		pNext = ss.st[num].config_head->next;
+		myfree(ss.st[num].config_head);
+		ss.st[num].config_head = pNext;
+	}
+	ss.st[num].config_last = NULL;
+
+}
+
+/*-------------------------------------------------------------------------
+	Ìí¼Ótopic½Úµã£¬Ã¿¸ö½Úµã´ú±íÒ»¸ö×Ö·û´®
+-------------------------------------------------------------------------*/
+int ssp_config_st_add_node(u8 num, config_st_t *config)
+{
+	int ret = -1;
+	config_st_t * newNode;
+	
+	newNode = (config_st_t *)mymalloc(sizeof(config_st_t)); if(!newNode){ return -1;}
+
+	if(newNode){
+		
+		newNode->next 		= NULL;
+		newNode->flag.byte	= 0;		
+		newNode->type 		= config->type;
+		newNode->key 		= config->key;
+		newNode->cond		= config->cond;
+		newNode->meshid 	= config->meshid;
+		newNode->boardid 	= config->boardid;
+		newNode->action 	= config->action;
+		newNode->value		= config->value;
+		
+		if(!ss.st[num].config_last){		/* Á´±íÎ²ÊÇ·ñÎª¿Õ? */
+			ss.st[num].config_head = newNode;
+			ss.st[num].config_last = newNode;
+		}else{
+			ss.st[num].config_last->next = newNode;	/* add node */
+			ss.st[num].config_last = newNode;		/* new list end */
+		}
+		
+		ret = 0;
+	}	
+
+	return ret;
+	
+}
+
+
+/*-------------------------------------------------------------------------   
+	//½âÎöconfig_stÖ¸Áî
+-------------------------------------------------------------------------*/
+void ssp_config_st_analyze(u8 *payload)
+{
+	cJSON *root,*tmp,*devs,*config_json;
+	int i, size;
+	
+	u8 st_num, num, ret;
+	config_st_t config = {0};
+//	u16 gesture[4] = {0x0e, 0x0f, 0x0c, 0x0d};
+
+	root = cJSON_Parse((char*)payload);
+
+	if(root){
+
+		devs = root->child;
+		
+		while(devs && devs->string && devs->type == cJSON_Array){
+
+			st_num = get_series_number(GET_SERIES_WHEN_EXSIT, GET_SERIES_ST, 0, devs->string);	
+			if(st_num != GET_SERIES_ERROR){
+
+				ssp_config_st_clear(st_num);			//Çå³ýµôÔ­ÓÐµÄÅäÖÃÁÐ±í
+
+				size = cJSON_GetArraySize(devs);
+				if(size){
+
+					for(i = 0; i < size; i++){
+						config_json = cJSON_GetArrayItem(devs, i);
+						
+						if(config_json){
+							
+							memset(&config, 0, sizeof(config));							
+							tmp = cJSON_GetObjectItem(config_json, key_type);						//type
+							if(tmp){	
+								ret = 0;
+								config.type = (u8)tmp->valueint;
+								if((config.type == 0x01) || (config.type == 0xf1)){		//ÉèÖÃ°´¼ü»òÈ¡Ïû°´¼ü(Ö»ÐèÒªkey¾Í¿ÉÒÔ)
+
+									tmp = cJSON_GetObjectItem(config_json, "key");					//key
+									if(tmp){
+										config.key = tmp->valueint;
+										ret = 1;
+									} 
+								}
+								if((config.type == 0x02) || (config.type == 0xf2)){ 	//ÉèÖÃÊÖÊÆ»òÈ¡ÏûÊÖÊÆ(Ö»ÐèÒªcond¾Í¿ÉÒÔ)
+															
+									tmp = cJSON_GetObjectItem(config_json, "cond");				//cond
+									if(tmp && tmp->valuestring){
+//										config.cond |= gesture[*(tmp->valuestring) - '1'] << 12 ;
+//										config.cond |= gesture[*(tmp->valuestring + 1) - '1'] << 8 ;
+//										config.cond |= gesture[*(tmp->valuestring + 2) - '1'] << 4 ;	
+										config.cond |= (u16)(*(tmp->valuestring) - '0' ) << 12 ;
+										config.cond |= (u16)(*(tmp->valuestring + 1) - '0' ) << 8 ;
+										config.cond |= (u16)(*(tmp->valuestring + 2) - '0' ) << 4 ;
+										ret = 1;
+									} 															
+								
+								}
+								if(ret == 0){continue;}
+
+								if((config.type == 0x01) || (config.type == 0x02)){		//ÈôÊÇÉèÖÃ¶¯×÷µÄ»°£¬Ôò¼ÌÐø»ñÈ¡ÆäËûÊý¾Ý
+
+									ret = 0;
+									tmp = cJSON_GetObjectItem(config_json, "targetID");				//targetID
+									if(tmp && tmp->valuestring){
+										if(*(tmp->valuestring) == 'S' && *(tmp->valuestring + 1) == 'C'){
+											num = get_series_number(GET_SERIES_WHEN_EXSIT, GET_SERIES_SC, 0, tmp->valuestring);	
+											if(num != GET_SERIES_ERROR){
+												ret = 1;
+												config.meshid = ss.sc[num].meshid;																										
+											}
+										}
+									}
+									if(ret == 0){continue;}
+
+									ret = 0;
+									tmp = cJSON_GetObjectItem(config_json, key_action);				//action
+									if(tmp && tmp->valuestring){
+										if(*(tmp->valuestring) == 'D' && *(tmp->valuestring + 1) == 'M'){
+											config.action = 0x51;
+											ret = 1;
+										}else if(*(tmp->valuestring) == 'W' && *(tmp->valuestring + 1) == 'P'){
+											config.action = 0x55;
+											ret = 1;
+										}
+									}
+									if(ret == 0){continue;}
+
+									ret = 0;
+									tmp = cJSON_GetObjectItem(config_json, key_MDID);				//MDID
+									if(tmp){
+										config.boardid = ((u8)tmp->valueint) << 4;
+										tmp = cJSON_GetObjectItem(config_json, key_CH);			//CH
+										if(tmp){
+											config.boardid |= (u8)tmp->valueint;
+											ret = 1;
+										}		
+									}
+									if(ret == 0){continue;}
+
+									if(config.type == 0x02){
+										ret = 0;
+										tmp = cJSON_GetObjectItem(config_json, key_value);				//value
+										if(tmp){
+											config.value = (u8)tmp->valueint;	
+											ret = 1;
+										}
+										if(ret == 0){continue;}
+									}
+
+								}
+
+
+								ssp_config_st_add_node(st_num, &config);
+
+							}
+							
+						}
+						
+					}
+
+				}
+								
+			}			
+			
+			devs = devs->next;
+			
+		}
+		
+		cJSON_Delete(root);
+				
+	}
+	
+}
+
+
+/*-------------------------------------------------------------------------
+    
+-------------------------------------------------------------------------*/
+void ssp_action_ir(u8 *payload)
+{
+	cJSON *root,*tmp, *raw;
+	int i, type, size, ret = RECEIPT_CODE_ANALYZE_ERROR;
+	u32 len = 0;
+	u8 buf[IR_SEND_LEN] = {0};
+	
+	root = cJSON_Parse((char*)payload);
+	if (root){
+		
+		tmp = cJSON_GetObjectItem(root, key_type);
+		if(tmp){
+			type = tmp->valueint;
+
+			if(type == 0){
+				
+				raw = cJSON_GetObjectItem(root, "raw");
+				if(raw && (raw->type == cJSON_Array)){		/* Ô­Ê¼´úÂë */
+
+					size = cJSON_GetArraySize(raw);
+					if((size <= IR_RAW_BIT_MAX) &&  ((size % 2) == 1)){		/* µÚÒ»Î»ÊÇ±íÊ¾1£¬×îºóÒ»Î»Ò²±ØÐëÊÇ1 */
+						ret = 0;
+						for(i = 0; i < size; i++){
+							tmp = cJSON_GetArrayItem(raw, i);
+							if(tmp && (tmp->valueint < IR_RAW_LEN_MAX)){
+								
+								buf[IR_POSITION_DATA + i * 2] = tmp->valueint / 256;
+								buf[IR_POSITION_DATA + i * 2 + 1] = tmp->valueint % 256;															
+							}else{
+								ret = RECEIPT_CODE_ANALYZE_ERROR;
+								break;
+							}
+						}
+						if(ret == 0){		//½âÎöÎÞ´íÎó
+							len = size * 2;
+							buf[0] = 0x7e;
+							buf[1] = 0x7e;
+							buf[2] = ir_get_message_id();
+							buf[3] = (len + 5) / 256;
+							buf[4] = (len + 5) % 256;
+							buf[5] = 0x41;
+							buf[6] = (u8)type;
+							buf[len + 5 + 2] = XOR_Check(&buf[2], (u16)(len + 5));
+							//½«msgid±£ÁôÏÂÀ´ÒÔ±ã»Ø¸´
+							addNodeTo_IRTxSLLast((char *)buf, len + 5 + 3, Rxfr4004.rx_var_header.msgid);
+
+						}						
+					}
+					
+				}
+
+			}
+			else{				
+				tmp = cJSON_GetObjectItem(root, key_code);	/* ºìÍâ±àÂë */
+				if(tmp && tmp->valuestring){
+					len = strlen(tmp->valuestring);
+					if((len <= IR_RAW_BIT_MAX) &&  ((len % 2) == 0)){
+						len = len /2;
+						for(i = 0; i < len; i++){
+							buf[IR_POSITION_DATA + i] = string_tohex2(tmp->valuestring + 2 * i);
+						}
+						buf[0] = 0x7e;
+						buf[1] = 0x7e;
+						buf[2] = ir_get_message_id();
+						buf[3] = (len + 5) / 256;
+						buf[4] = (len + 5) % 256;
+						buf[5] = 0x41;
+						buf[6] = (u8)type;
+						buf[len + 5 + 2] = XOR_Check(&buf[2], (u16)(len + 5));
+						//½«msgid±£ÁôÏÂÀ´ÒÔ±ã»Ø¸´
+						addNodeTo_IRTxSLLast((char *)buf, len + 5 + 3, Rxfr4004.rx_var_header.msgid);
+						ret = 0;
+											
+					}
+			
+				}	
+				
+			}
+			
+		}		
+		
+		cJSON_Delete(root);
+		
+	}	
+
+	if(ret > 0){
+		ssp_recepit_response(ret);
+	}
+	
+}
+
+
+/*-------------------------------------------------------------------------
+    
+-------------------------------------------------------------------------*/
+void ssp_action_learn_ir(void)
+{
+	u8 buf[10] = {0};
+	u8 len = 5;
+
+	buf[0] = 0x7e;
+	buf[1] = 0x7e;
+	buf[2] = ir_get_message_id();
+	buf[3] = 0;
+	buf[4] = len;
+	buf[5] = 0x42;
+	buf[6] = 0x01;
+	buf[len + 2] = XOR_Check(&buf[2], (u16)len);
+	
+	//½«msgid±£ÁôÏÂÀ´ÒÔ±ã»Ø¸´
+	addNodeTo_IRTxSLLast((char *)buf, len + 3, Rxfr4004.rx_var_header.msgid);
+
+}
+
+
+
+
+
+/*----------------------------------------------------------------------------
+	Çå¿ÕtopicÁ´±í
+-----------------------------------------------------------------------------*/
+void ssp_topic_clear(void)
+{
+	topic_t *pNext;
+	
+	while(topic_head){		
+		pNext = topic_head->next;
+		if(topic_head->string){myfree(topic_head->string);} 
+		myfree(topic_head);
+		topic_head = pNext;
+	}
+	topic_last = NULL;
+
+}
+
+/*-------------------------------------------------------------------------
+	Ìí¼Ótopic½Úµã£¬Ã¿¸ö½Úµã´ú±íÒ»¸ö×Ö·û´®
+-------------------------------------------------------------------------*/
+int ssp_topic_add_node(char *psave, int length)
+{
+	int ret = -1;
+	topic_t * newNode;
+	char *string;
+	
+	newNode = (topic_t *)mymalloc(sizeof(topic_t)); if(!newNode){ return -1;}
+	string = (char *)mymalloc(length + 1); if(!string){myfree(newNode); return -1;}
+
+	if(newNode && string){
+		newNode->next = NULL;
+		newNode->len = length;
+
+		mymemcpy(string, psave, length);
+		*(string + length) = 0;		/* ×Ö·û´®½áÊø·û */
+		
+		newNode->string = string;
+		
+		if(!topic_last){		/* Á´±íÎ²ÊÇ·ñÎª¿Õ? */
+			topic_head = newNode;
+			topic_last = newNode;
+		}else{
+			topic_last->next = newNode;	/* add node */
+			topic_last = newNode;		/* new list end */
+		}
+		
+		ret = 0;
+	}	
+
+	return ret;
+	
+}
+
+
+
+
+/*----------------------------------------------------------------------------
+	//½âÎöqeÉî¶ÈÃüÁî
+	¡®/¡¯Óë¡®/¡¯Ö®¼äµÄ×Ö·û´®³¤¶ÈÄ¬ÈÏ²»³¬¹ý100
+-----------------------------------------------------------------------------*/
+void ssp_topic_analyze(char *topic)//bufÊÇtopicÄÚÈÝ
+{
+	int len;
+	char *node = topic;	
+	
+	ssp_topic_clear();
+
+	len = 0;
+	while(*(topic++)){
+		len++;		
+		if(*topic == '/'){
+			ssp_topic_add_node(node + 1, len -1);
+			node = topic;
+			len = 0;
+		}
+	}	
+	ssp_topic_add_node(node + 1, len -1);
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	//½âÎötopicºÍpayload
+-----------------------------------------------------------------------------*/
+void ssp_topic_payload_analyze(u8 *topic, u8 *payload)
+{	
+	topic_t *topicTmp;
+
+	ssp_topic_analyze((char *)topic);	
+
+	//¿ìËÙÅÐ¶Ï 
+	if(*(topic_head->string) == 'q'){
+
+		if(*(topic_head->string + 1) == 'e'){					/* /qe */
+			
+			cmd_led_flag = 1;			
+			
+			ssp_qe_analyze(topic_head->next);
+			ssp_qe_to_sicp_cmd();
+
+			ssp_recepit_response(RECEIPT_CODE_ANALYZE_OK);	/* qe Ö±½Ó»Ø¸´receipt»ØÖ´ */	
+						
+		}
+	}
+	else if(*(topic_head->string) == 'd'){
+
+		if(strcmp(topic_head->string, "data") == 0){
+			
+			topicTmp = topic_head->next;
+		
+			if(strcmp(topicTmp->string, "sync") == 0){		/* /data/sync */
+				
+				ssp_data_sync(SSP_GET);
+			}
+			else if(strcmp(topicTmp->string, "st") == 0){		/* /data/st */	
+				ssp_data_st(payload);
+			
+			}
+			else if(strcmp(topicTmp->string, "recent") == 0){	/* /data/recent */	
+		
+				ack_dr = 1; 			
+				//Ç¿ÖÆË¢ÐÂ£¬»Ø¸´ÄÚÈÝÔÚtask100msµÄif(ack_dr)ÖÐÖ´ÐÐ				
+			}
+			else if(strcmp(topicTmp->string, "ir") == 0){		/* /data/ir */	
+				
+				
+//				ssp_send_message(0x83, 1, 0, NULL, Rxfr4004.rx_var_header.msgid, 0, NULL);
+			}
+		
+		}
+		else if(strcmp(topic_head->string, "device") == 0){
+
+			topicTmp = topic_head->next;
+			
+			if(strcmp(topicTmp->string, "status") == 0){		/* /device/status */
+				
+				ssp_device_status_response(topic);//»Ø¸´ÔÚdealº¯ÊýÖÐ				
+			}
+			else if(strcmp(topicTmp->string, "malfunction") == 0){ /* /device/malfunction */	
+
+				ssp_device_malfunction_response(Rxfr4004.rx_var_header.msgid);
+			
+			}
+			else if(strcmp(topicTmp->string, "list") == 0){	/* /device/list */	
+
+				ss.flag.bit.recv_devinfo_list = 1;
+				ssp_device_list_recv(payload);
+				
+//				ssp_check_device_legality();
+//				devList.times = 0;				
+			}
+			else if(strcmp(topicTmp->string, "info") == 0){		
+				
+				if(topicTmp->next){
+						
+					topicTmp = topicTmp->next;
+					if(strcmp(topicTmp->string, "ss") == 0){			/* /device/info/ss */
+						
+						ssp_device_info_ss(SSP_GET, Rxfr4004.rx_var_header.msgid);
+					}
+					else if(strcmp(topicTmp->string, "sub") == 0){	/* /device/info/sub */	
+						
+						ssp_device_info_sub_response(Rxfr4004.rx_var_header.msgid);
+					}
+				}
+			}else{
+
+			}
+
+		}
+
+	}
+	else if(*(topic_head->string) == 'a'){
+		
+		if(strcmp(topic_head->string, "actions") == 0){
+			
+			cmd_led_flag = 1;			
+			
+			topicTmp = topic_head->next;
+			
+			if(topicTmp){
+				
+				if(strcmp(topicTmp->string, "ir") == 0){				/* /actions/ir */
+					ssp_action_ir(payload);
+					
+				}
+				else if(strcmp(topicTmp->string, "learn") == 0){		
+
+					if(topicTmp->next){
+						topicTmp = topicTmp->next;
+						if(strcmp(topicTmp->string, "ir") == 0){		/* /actions/learn/ir */
+							ssp_action_learn_ir();
+						}						
+					}								
+				}
+				else if(strcmp(topicTmp->string, "perform") == 0){	/* /actions/perform */
+								
+				}
+				else if(strcmp(topicTmp->string, "refresh") == 0){		/* /actions/refresh */
+				
+					if(topicTmp->next){ 			//Éî¶ÈÖ¸Áî					
+						deal_action_refresh(topic);
+					}else{
+						ack_ar = 1;
+					}
+					
+				}
+				else if(strcmp(topicTmp->string, "backlight") == 0){	/* /actions/backlight */
+					
+					deal_action_backlight(payload);
+					ack_ab = 1;
+				}
+
+
+
+			}
+
+		}
+		else if(strcmp(topic_head->string, "alarm") == 0){			/* /alarm */
+			
+			if(topic_head->next){
+				
+				ssp_alarm_analyze(topic_head->next);
+				sicp_alarm_cmd();
+
+			}
+
+		}
+
+	}
+	else if(*(topic_head->string) == 'c'){
+
+		if(strcmp(topic_head->string, "config") == 0){
+			
+			topicTmp = topic_head->next;
+		
+			if(*(topicTmp->string) == 's'){
+
+				if(*(topicTmp->string + 1) == 's'){						/* /config/ss */
+					
+					ss.flag.bit.recv_config_ss = 1;
+					if(topicTmp->next){					//Éî¶ÈÖ¸Áî						
+						deal_deepsyn_config_ss(topic, payload);
+					}else{
+						deal_config_ss(payload);		
+					}
+					
+				}
+				else if(*(topicTmp->string + 1) == 't'){					/* /config/st */
+
+					if(ss.flag.bit.request_config_st == 1){			//Ö÷¶¯ÇëÇóµÄ/config/st
+						ss.flag.bit.recv_config_st = 1;
+//						ssp_config_st_analyze(payload);					
+						ssp_recepit_response(RECEIPT_CODE_ANALYZE_OK);
+						
+					}
+												
+				}
+				else if(strcmp(topicTmp->string, "strategy") == 0){
+					
+					if(topicTmp->next){
+						
+						topicTmp = topicTmp->next;
+						if(strcmp(topicTmp->string, "hpst") == 0){		/* /config/strategy/hpst */
+							
+//							deal_config_stragy_hpst(payload);		
+						}
+						else if(strcmp(topicTmp->string, "htsp") == 0){	/* /config/strategy/htsp */	
+							
+//							deal_config_strategy_htsp(topic);
+						}
+					}
+					
+				}
+				
+			}
+			else if(strcmp(topicTmp->string, "mesh") == 0){
+				
+				deal_config_mesh(payload);		
+				ack_cm = 1;			
+			}
+		
+		}
+
+	}
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	//½âÎössp Êý¾Ý°ü
+-----------------------------------------------------------------------------*/
+u8 ssp_package_analyze(u8 *buf, u16 buf_len)
 {
 	u8 *temp_buf;
-	u32 useful_data_len;
+	u32 useful_data_len = 0;
 	u8  remaining_len=0;
-	u8  topic_len;
-	u16 payload_len;
+	u8  topic_len = 0;
+	u16 payload_len = 0;
+
 	temp_buf = buf;
-	if((temp_buf[0] == 0xBB) && (temp_buf[1] == 0xBB))
-	{
-		Rxfr4004.rx_fix_header.ch.first_ch_byte = temp_buf[2];
-		if((temp_buf[3] & 0x80) == 0x00)
-		{
+	
+	memset(&Rxfr4004, 0, sizeof(Rxfr4004));
+
+	if((temp_buf[0] == 0xBB) && (temp_buf[1] == 0xBB)){	
+		
+		if((temp_buf[3] & 0x80) == 0x00){
 			remaining_len = 1;
 			useful_data_len = temp_buf[3];
-			if(useful_data_len != buf_len - 4)//½ÓÊÕµ½µÄÓÐÐ§Êý¾Ý³¤¶ÈÓëÊµ¼ÊÊÕµ½µÄÊý¾Ý²»µÈ£¬´íÎó£¬²»½ÓÊÕ±¾°üÊý¾Ý
-			{
-				return 0;
-			}
 		}
-		else if((temp_buf[4] & 0x80) == 0x00)
-		{
+		else if((temp_buf[4] & 0x80) == 0x00){
 			remaining_len = 2;
-			//useful_data_len = (temp_buf[3]& 0x7F)*128 + temp_buf[4];
 			useful_data_len = (temp_buf[3]-0x80) + temp_buf[4]*128;
-			if(useful_data_len != buf_len - 5)//½ÓÊÕµ½µÄÓÐÐ§Êý¾Ý³¤¶ÈÓëÊµ¼ÊÊÕµ½µÄÊý¾Ý²»µÈ£¬´íÎó£¬²»½ÓÊÕ±¾°üÊý¾Ý
-			{
-				return 0;
-			}
 		}
-		else if((temp_buf[5] & 0x80) == 0x00)
-		{
+		else if((temp_buf[5] & 0x80) == 0x00){
 			remaining_len = 3;
-			//useful_data_len = (temp_buf[3]& 0x7F)*16384 + (temp_buf[4]& 0x7F)*128 + temp_buf[5];
 			useful_data_len = (temp_buf[3]-0x80) + ((temp_buf[4]& 0x7F)*128) + temp_buf[5]*16384;
-			if(useful_data_len != buf_len - 6)//½ÓÊÕµ½µÄÓÐÐ§Êý¾Ý³¤¶ÈÓëÊµ¼ÊÊÕµ½µÄÊý¾Ý²»µÈ£¬´íÎó£¬²»½ÓÊÕ±¾°üÊý¾Ý
-			{
-				return 0;
-			}
 		}
-		else if((temp_buf[6] & 0x80) == 0x00)
-		{
+		else if((temp_buf[6] & 0x80) == 0x00){
 			remaining_len = 4;
-			//useful_data_len = (temp_buf[3]& 0x7F)*2097126 + (temp_buf[4]& 0x7F)*16384 + (temp_buf[5]& 0x7F)*128 + temp_buf[6];
 			useful_data_len = (temp_buf[3]-0x80) + ((temp_buf[4]& 0x7F)*128) + ((temp_buf[5]&0x7F)*16384) + temp_buf[6]*2097152;
-			if(useful_data_len != buf_len - 7)//½ÓÊÕµ½µÄÓÐÐ§Êý¾Ý³¤¶ÈÓëÊµ¼ÊÊÕµ½µÄÊý¾Ý²»µÈ£¬´íÎó£¬²»½ÓÊÕ±¾°üÊý¾Ý
-			{
-				return 0;
-			}
 		}
-		if(remaining_len)
-		{
+		
+		if(remaining_len){
+			
+			Rxfr4004.rx_fix_header.ch.first_ch_byte = temp_buf[2];
 			Rxfr4004.rx_var_header.version = temp_buf[remaining_len+3];
 			Rxfr4004.rx_var_header.topic_lengthH = temp_buf[remaining_len+4];
 			topic_len = Rxfr4004.rx_var_header.topic_lengthL = temp_buf[remaining_len+5];
 			payload_len = useful_data_len - 3 - topic_len;
-			mymemcpy(Rxfr4004.rx_var_header.topic,(temp_buf+remaining_len+6),topic_len);
-			Rxfr4004.rx_var_header.message_id_H = temp_buf[remaining_len+5+topic_len+1];
-			Rxfr4004.rx_var_header.message_id_L = temp_buf[remaining_len+5+topic_len+2];
-			mymemcpy(Rxfr4004.rx_payload,(temp_buf+remaining_len+8+topic_len),payload_len);
+			mymemcpy(Rxfr4004.rx_var_header.topic, (temp_buf+remaining_len + 6), topic_len);
+			Rxfr4004.rx_var_header.msgid = temp_buf[remaining_len+5+topic_len+1] * 256 + temp_buf[remaining_len+5+topic_len+2];
+			mymemcpy(Rxfr4004.rx_payload, (temp_buf+remaining_len+8+topic_len), payload_len);			
 			return 1;
 		}
-		else
-		{
+		else{
 			return 0;
 		}
 		
 	}
-	else
-	{
+	else{
 		return 0;
 	}
 
 }
 
 
-
-//½âÎötopicºÍpadloadÄÚÈÝ
-void rev_analyze(u8 *topic_buf,u8 *cjson_buf)
+/*----------------------------------------------------------------------------
+	//»Ø¸´ÐÄÌø°ü
+-----------------------------------------------------------------------------*/
+void ssp_heart_beat(u8 fix1)
 {
-	u8 i,deepsyn_topic=0;
-	u8 *temp_topicbuf,*temp_cjsonbuf;
-	temp_topicbuf = topic_buf;
-	temp_cjsonbuf	= cjson_buf;
-	for(i = 0;i < Rxfr4004.rx_var_header.topic_lengthL;i++){
-		if(*(temp_topicbuf+i) == 0x2F)//0x2FÎª'/'×Ö·û
-			deepsyn_topic++;
-	}
-	if(deepsyn_topic <= 3)//·ÇÉî¶ÈÖ¸Áî
-	{
-		if (strncmp(temp_topicbuf,"/actions/perform",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_action_perform(temp_cjsonbuf);
-			ack_ap_rev_success = 1;
-			ss_ap_message_id_H = Rxfr4004.rx_var_header.message_id_H;
-			ss_ap_message_id_L = Rxfr4004.rx_var_header.message_id_L;
-			send_message_without_payload(0x85,0x01,ss_ap_message_id_H,ss_ap_message_id_L,0x00);
-		}
-		else if (strncmp(temp_topicbuf,"/config/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_config_ss(temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-		}
-		else if(strncmp(temp_topicbuf,"/actions/refresh",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			ack_ar = 1;
-			//»Ø¸´Ö´ÐÐ»ØÖ´,ÔÚif(ack_ar)´¦Ö´ÐÐ
-		}
-		else if(strncmp(temp_topicbuf,"/actions/backlight",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_action_backlight(temp_cjsonbuf);
-			ack_ab = 1;
-			//»Ø¸´Ö´ÐÐ»ØÖ´,ÔÚif(ack_ab)´¦Ö´ÐÐ
-		}
-		else if(strncmp(temp_topicbuf,"/data/sync",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			ack_ds = 1;
-			send_data_sync(0x83);
-		}
-		else if(strncmp(temp_topicbuf,"/data/recent",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			ack_dr = 1;//Ç¿ÖÆË¢ÐÂ£¬»Ø¸´ÄÚÈÝÔÚtask100msµÄif(ack_dr)ÖÐÖ´ÐÐ
-		}
-		else if(strncmp(temp_topicbuf,"/config/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			if(ssp_buf[2] == 0x43)	{
-				deal_config_ss(temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ	
-				ack_cs = 1;
-			}
-		}
-		else if(strncmp(temp_topicbuf,"/data/ir",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			ack_dir_rev_success = 1;
-			ss_di_message_id_H = Rxfr4004.rx_var_header.message_id_H;
-			ss_di_message_id_L = Rxfr4004.rx_var_header.message_id_L;
-			send_message_without_payload(0x83,0x01,ss_di_message_id_H,ss_di_message_id_L,0x00);
-		}
-		else if(strncmp(temp_topicbuf,"/device/list",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_device_list(temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_dl = 1;
-		}
-		else if(strncmp(temp_topicbuf,"/config/mesh",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_config_mesh(temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_cm = 1;
-		}
-		else if(strncmp(temp_topicbuf,"/config/st",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_config_st(temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_cst = 1;
-		}
-		else if(strncmp(temp_topicbuf,"/device/status",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			//ack_des = 1;//»Ø¸´·ÅÔÚTask100msÖÐ
-			deal_device_status(temp_topicbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ss_des_message_id_H = Rxfr4004.rx_var_header.message_id_H;
-			ss_des_message_id_L = Rxfr4004.rx_var_header.message_id_L;
-		}
-		else if(strncmp(temp_topicbuf,"/device/info/ss",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			ack_diss = 1;
-			//ready_ss_post = 1;
-			//send_device_info_sub();
-			send_device_info_ss(0x02,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L);
-		}
-		else if(strncmp(temp_topicbuf,"/config/strategy/hpst",Rxfr4004.rx_var_header.topic_lengthL) == 0)
-		{
-			deal_config_stragy_hpst(temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_cshp = 1;
-		}
-	}
-	else//Éî¶ÈÖ¸Áî
-	{
-		if(strncmp(temp_topicbuf,"/actions/refresh",15) == 0)
-		{
-			deal_action_refresh(temp_topicbuf);//bufÊÇtopicµÄÄÚÈÝ
-		}
-		else if(strncmp(temp_topicbuf,"/data/sync",10) == 0)
-		{
-			deal_data_sync(temp_topicbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_ds2 = 1;
-		}
-		else if(strncmp(temp_topicbuf,"/config/ss",10) == 0)
-		{
-			deal_deepsyn_config_ss(temp_topicbuf,temp_cjsonbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_cs = 1;
-		}
-		else if(strncmp(temp_topicbuf,"/device/status",14) == 0)
-		{
-			deal_device_status(temp_topicbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			//ack_des2 ack_des3ÔÚdeal_device_statusÖÐ¸³Öµ
-			ss_des_message_id_H = Rxfr4004.rx_var_header.message_id_H;
-			ss_des_message_id_L = Rxfr4004.rx_var_header.message_id_L;
-		}
-		else if(*(temp_topicbuf+1)== 'q' && *(temp_topicbuf+2)=='e')
-		{
-			deal_qe(temp_topicbuf);//»Ø¸´ÔÚTask100msÖÐ
-			ack_qe = 1;
-			ss_qe_message_id_H = Rxfr4004.rx_var_header.message_id_H;
-			ss_qe_message_id_L = Rxfr4004.rx_var_header.message_id_L;
-			
-		}
-		else if(strncmp(temp_topicbuf,"/alarm",6) == 0)//alarmÖ¸Áî
-		{
-			dela_alarm(temp_topicbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-			ack_alarm = 1;
-		}
-		else if(strncmp(temp_topicbuf,"/config/strategy/htsp",21) == 0)
-		{
-			deal_config_strategy_htsp(temp_topicbuf);//»Ø¸´ÔÚdealº¯ÊýÖÐ
-		}
-	}
+	u8 send_buf[2];
+	
+	send_buf[0] = fix1;
+	send_buf[1] = 0x00;
+	addNodeToUartTxSLLast((char *)send_buf, 2);
+	
 }
+
+
+/*----------------------------------------------------------------------------
+
+-----------------------------------------------------------------------------*/
+void recv_4004_analyze(void)
+{
+	if (rev_success){
+		
+		rev_success = 0;	
+		
+		if(ssp_length){				//½ÓÊÕµ½0xbb 0xbb ¿ªÍ·µÄÊý¾Ý
+			
+			if(ssp_buf[2] == 0x41){
+				
+				ssp_heart_beat(0x83);
+				
+			}else if(ssp_package_analyze(ssp_buf, ssp_length)){
+				
+				ssp_topic_payload_analyze(Rxfr4004.rx_var_header.topic, Rxfr4004.rx_payload);
+			}
+
+		}
+
+		if(Usart1_Delay_Cnt <= 10){		/* 20msÒÔÄÚ */
+		
+			if(uartTxSLHead){	//Á´±íÍ·²»Îª¿Õ
+				Usart1_Send((u8 *)uartTxSLHead->data, uartTxSLHead->len); //uartTxSLHead->haswriteÔÚÖÐ¶ÏÖÐ´¦Àí			
+			}
+
+		}
+
+		
+	}
+	
+}
+
+
 //½âÎöconfig_ssÖ¸Áî£¬Êý¾Ý´æ´¢ÔÚss_csÖÐ
 void deal_config_ss(u8 *buf)
 {
@@ -390,7 +1400,7 @@ void deal_config_ss(u8 *buf)
 			level2 = cJSON_GetObjectItem(level1,"condition");
 			if (level2)
 			{
-				tmp = cJSON_GetObjectItem(level2,"code");
+				tmp = cJSON_GetObjectItem(level2, key_code);
 				if(tmp && tmp->valuestring)
 				{
 					mymemcpy(ss_cs.code,tmp->valuestring,strlen(tmp->valuestring));
@@ -415,7 +1425,8 @@ void deal_config_ss(u8 *buf)
 			}
 		}			
 		cJSON_Delete(root);
-		success_receipt();
+		ssp_recepit_response(RECEIPT_CODE_SUCCESS);
+		
 	}
 }
 
@@ -426,10 +1437,8 @@ void deal_config_ss(u8 *buf)
 void deal_deepsyn_config_ss(u8 *buf1,u8 *buf2)//buf1ÊÇtopicÄÚÈÝ,buf2ÊÇpayloadÄÚÈÝ
 {
 	char first_ch;
-	//char *key;
 	cJSON *root,*level1,*level2,*tmp;
 	first_ch = (char)(*(buf1+12));
-	//key = mymalloc(20);
 	root = cJSON_Parse((char*)buf2);
 	switch(first_ch)
 	{
@@ -492,7 +1501,7 @@ void deal_deepsyn_config_ss(u8 *buf1,u8 *buf2)//buf1ÊÇtopicÄÚÈÝ,buf2ÊÇpayloadÄÚÈ
 						}
 						level2 = cJSON_GetObjectItem(level1,"condition");
 						if(level2){
-							tmp = cJSON_GetObjectItem(level2,"code");
+							tmp = cJSON_GetObjectItem(level2, key_code);
 							if(tmp && tmp->valuestring){
 								mymemcpy(ss_cs.code,tmp->valuestring,strlen(tmp->valuestring));
 							}
@@ -545,166 +1554,8 @@ void deal_deepsyn_config_ss(u8 *buf1,u8 *buf2)//buf1ÊÇtopicÄÚÈÝ,buf2ÊÇpayloadÄÚÈ
 		default:
 			break;
 	}
-	success_receipt();
-}
-
-//½âÎöaction_performÖ¸Áî£¬Êý¾Ý´æ´¢ÔÚss_apÖÐ
-void deal_action_perform(u8 *buf)
-{
-	cJSON *root,*tmp,*level1,*level2,*level3;
-	int i,cmd_size;
-	int sep_type;//sep_typeÎª1Ê±ÊÇSL£¬Îª2Ê±ÊÇSC
-	root = cJSON_Parse((char*)buf);
-	if (root)
-	{
-		tmp = cJSON_GetObjectItem(root,"qos");
-		if(tmp)
-		{
-			ss_ap.qos = tmp->valueint;
-		}
-		level1 = cJSON_GetObjectItem(root,"cmd");	
-		if (level1)
-		{
-			if(level1->type == cJSON_Array)
-			{
-				cmd_size = cJSON_GetArraySize(level1);
-				if(cmd_size)
-				{
-					for(i = 0;i < cmd_size;i++)
-					{
-						level2 = cJSON_GetArrayItem(level1,i);
-						if(level2)
-						{
-							tmp = cJSON_GetObjectItem(level2,"sepid");
-							if(tmp && tmp->valuestring)
-							{
-								if (*tmp->valuestring == 'S')
-									if(*(tmp->valuestring+1) == 'L')
-									{sep_type = 1;mymemcpy(ss_ap.sl_ap[ss_ap.sl_num].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_ap.sl_num++;}
-									else
-									{sep_type = 2;mymemcpy(ss_ap.sp_ap[ss_ap.sp_num].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_ap.sp_num++;}
-							}
-							tmp = cJSON_GetObjectItem(level2,"seqid");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_ap.sl_ap[ss_ap.sl_num].seqid = tmp->valueint;
-								else if(sep_type == 2)	ss_ap.sp_ap[ss_ap.sp_num].seqid = tmp->valueint;
-							}
-							tmp = cJSON_GetObjectItem(level2,"CH");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_ap.sl_ap[ss_ap.sl_num].ch = tmp->valueint;
-								else if(sep_type == 2)	ss_ap.sp_ap[ss_ap.sp_num].ch = tmp->valueint;
-							}
-							tmp = cJSON_GetObjectItem(level2,"action");
-							if(tmp && tmp->valuestring)
-							{
-								if(sep_type == 1)	mymemcpy(ss_ap.sl_ap[ss_ap.sl_num].action,tmp->valuestring,strlen(tmp->valuestring));
-								else if(sep_type == 2)	mymemcpy(ss_ap.sp_ap[ss_ap.sp_num].action,tmp->valuestring,strlen(tmp->valuestring));
-							}
-							tmp = cJSON_GetObjectItem(level2,"topos");
-							if(tmp && tmp->valuestring)
-							{
-								if(sep_type == 1)	mymemcpy(ss_ap.sl_ap[ss_ap.sl_num].topos,tmp->valuestring,strlen(tmp->valuestring));
-								else if(sep_type == 2)	mymemcpy(ss_ap.sp_ap[ss_ap.sp_num].topos,tmp->valuestring,strlen(tmp->valuestring));
-							}
-							level3 = cJSON_GetObjectItem(level2,"option");
-							if(level3)
-							{
-								tmp = cJSON_GetObjectItem(level3,"durations");
-								if(tmp)
-								{
-									ss_ap.sl_ap[ss_ap.sl_num].option.duration = tmp->valueint;
-								}
-								tmp = cJSON_GetObjectItem(level3,"erase");
-								if(tmp)
-								{
-									ss_ap.sl_ap[ss_ap.sl_num].option.erase = tmp->valueint;
-								}
-							}
-							tmp = cJSON_GetObjectItem(level2,"stseq");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_ap.sl_ap[ss_ap.sl_num].stseq = tmp->valueint;
-								else if(sep_type == 2)	ss_ap.sp_ap[ss_ap.sp_num].stseq = tmp->valueint;
-								
-							}
-							tmp = cJSON_GetObjectItem(level2,"timeout");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_ap.sl_ap[ss_ap.sl_num].timeout = tmp->valueint;
-								else if(sep_type == 2)	ss_ap.sp_ap[ss_ap.sp_num].timeout = tmp->valueint;
-							}
-						}
-					}
-				}
-			}
-			else if(level1->type == cJSON_Object)//´ËÊ±Ö»ÓÐÒ»¸öseqid£¬¼´Ö»¿ØÖÆSL»òSP
-			{
-				tmp = cJSON_GetObjectItem(level1,"sepid");
-				if(tmp && tmp->valuestring)
-				{
-					if (*tmp->valuestring == 'S')
-						if(*tmp->valuestring+1 == 'L')
-						{sep_type = 1;mymemcpy(ss_ap.sl_ap[0].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_ap.sl_num++;}
-						else
-						{sep_type = 2;mymemcpy(ss_ap.sp_ap[0].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_ap.sp_num++;}
-				}
-				tmp = cJSON_GetObjectItem(level2,"seqid");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_ap.sl_ap[0].seqid = tmp->valueint;
-					else if(sep_type == 2)	ss_ap.sp_ap[0].seqid = tmp->valueint;
-				}
-				tmp = cJSON_GetObjectItem(level2,"CH");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_ap.sl_ap[0].ch = tmp->valueint;
-					else if(sep_type == 2)	ss_ap.sp_ap[0].ch = tmp->valueint;
-				}
-				tmp = cJSON_GetObjectItem(level2,"action");
-				if(tmp && tmp->valuestring)
-				{
-					if(sep_type == 1)	mymemcpy(ss_ap.sl_ap[0].action,tmp->valuestring,strlen(tmp->valuestring));
-					else if(sep_type == 2)	mymemcpy(ss_ap.sp_ap[0].action,tmp->valuestring,strlen(tmp->valuestring));
-				}
-				tmp = cJSON_GetObjectItem(level2,"topos");
-				if(tmp && tmp->valuestring)
-				{
-					if(sep_type == 1)	mymemcpy(ss_ap.sl_ap[0].topos,tmp->valuestring,strlen(tmp->valuestring));
-					else if(sep_type == 2)	mymemcpy(ss_ap.sp_ap[0].topos,tmp->valuestring,strlen(tmp->valuestring));
-				}
-				level3 = cJSON_GetObjectItem(level2,"option");
-				if(level3)
-				{
-					tmp = cJSON_GetObjectItem(level3,"durations");
-					if(tmp)
-					{
-						ss_ap.sl_ap[0].option.duration = tmp->valueint;
-					}
-					tmp = cJSON_GetObjectItem(level3,"erase");
-					if(tmp)
-					{
-						ss_ap.sl_ap[0].option.erase = tmp->valueint;
-					}
-				}
-				tmp = cJSON_GetObjectItem(level2,"stseq");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_ap.sl_ap[0].stseq = tmp->valueint;
-					else if(sep_type == 2)	ss_ap.sp_ap[0].stseq = tmp->valueint;
-					
-				}
-				tmp = cJSON_GetObjectItem(level2,"timeout");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_ap.sl_ap[0].timeout = tmp->valueint;
-					else if(sep_type == 2)	ss_ap.sp_ap[0].timeout = tmp->valueint;
-				}
-			}
-		}
-		cJSON_Delete(root);
-	}
+	ssp_recepit_response(RECEIPT_CODE_SUCCESS);
+	
 }
 
 
@@ -715,10 +1566,12 @@ void deal_action_refresh(u8 *buf)//bufÊÇtopicµÄÄÚÈÝ
 	ss_ar.ch[0] = *(buf+18);
 	ss_ar.ch[1] = *(buf+19);
 	if(((ss_ar.ch[0] == 'A') && (ss_ar.ch[1] == 'L')) || (ss_ar.ch[0] == 'C') && (ss_ar.ch[1] == 'S'))//Ë¢ÐÂST»·¾³¹âÑÕÉ«ºÍÇ¿¶È
-		{rev_ar2 = 1;success_receipt();}
+		{rev_ar2 = 1; ssp_recepit_response(RECEIPT_CODE_SUCCESS);}
 	else//Ë¢ÐÂµÄÊÇSSµÄ´«¸ÐÆ÷
-		{rev_ar1 = 1;success_receipt();}
+		{rev_ar1 = 1; ssp_recepit_response(RECEIPT_CODE_SUCCESS);}
 }
+
+
 //½âÎöaction_backlightÖ¸Áî£¬Êý¾Ý´æ´¢ÔÚss_abÖÐ
 
 void deal_action_backlight(u8 *buf)
@@ -728,7 +1581,7 @@ void deal_action_backlight(u8 *buf)
 	root = cJSON_Parse((char*)buf);
 	if (root)
 	{
-		tmp = cJSON_GetObjectItem(root,"sepid");
+		tmp = cJSON_GetObjectItem(root, key_sepid);
 		if(tmp && tmp->valuestring){
 			mymemcpy(ss_ab.sepid,tmp->valuestring,8);
 		}
@@ -789,127 +1642,6 @@ void deal_action_backlight(u8 *buf)
 }
 
 
-//½âÎödata_syncÖ¸Áî£¬Êý¾Ý´æ´¢ÔÚss_abÖÐ
-void deal_data_sync(u8 *buf)
-{
-	ss_ds.channel = (u8)(*(buf+15) - '0')*10 + (u8)(*(buf+16) - '0');
-	ss_ds.ch[0] = *(buf+18);
-	ss_ds.ch[1] = *(buf+19);
-	send_deepin_data_sync();
-}
-
-//½âÎödevice_listÖ¸Áî£¬Ö¸Áî´æÔÚssÖÐ,SC,SLC,SPC,STµÄdevice idÔÚÕâÀï¸³Öµ
-void deal_device_list(u8 *buf)
-{
-	cJSON *root,*tmp,*level1,*level2;
-	u8 double_break = 0;
-	int i,j,k,cmd_size;
-	root = cJSON_Parse((char*)buf);
-	if(root)
-	{
-		tmp = cJSON_GetObjectItem(root,"deviceID");
-		if(tmp && tmp->valuestring){
-			if(strncmp(ss.deviceid,tmp->valuestring,8)==0){//ÅäÖÃµÄIDÓë±¾SSµÄIDÏàÍ¬²Å½øÐÐÏÂÒ»²½
-			level1 = cJSON_GetObjectItem(root,"devices");
-				if(level1){
-					if(level1->type == cJSON_Array){
-						cmd_size = cJSON_GetArraySize(level1);
-						if(cmd_size){
-							for(i = 0;i < cmd_size;i++)
-							{
-								level2 = cJSON_GetArrayItem(level1,i);
-								if(level2){
-									tmp = cJSON_GetObjectItem(level2,"deviceID");
-									if(tmp && tmp->valuestring){
-										if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'L')){
-											for(j = 0;j < 5;j++){
-												for(k=0;k < 15;k++){
-														//if(strncmp(ss.sc[j].slc[k].deviceid,tmp->valuestring,8)==0){//Ñ°ÕÒµ½SCÏÂ¶ÔÓ¦IDµÄSLC
-														if(ss.sc[j].slc[k].deviceid[0] == 0x00){//Ñ°ÕÒdevice idÎª¿ÕµÄSLC
-														mymemcpy(ss.sc[j].slc[k].deviceid,tmp->valuestring,10);
-														tmp = cJSON_GetObjectItem(level2,"model");
-														if(tmp && tmp->valuestring){
-															mymemcpy(ss.sc[j].slc[k].model,tmp->valuestring,strlen(tmp->valuestring));
-														}
-														tmp = cJSON_GetObjectItem(level2,"coord");
-														if(tmp && tmp->valuestring){
-															mymemcpy(ss.sc[j].slc[k].coord,tmp->valuestring,strlen(tmp->valuestring));
-														}
-														double_break = 1;
-														break;
-													}
-												}
-												if(double_break)	{double_break = 0;break;}
-											}
-										}
-										else if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'P')){
-											for(j = 0;j < 5;j++){
-												for(k=0;k < 15;k++){
-														//if(strncmp(ss.sc[j].spc[k].deviceid,tmp->valuestring,8)==0){//Ñ°ÕÒµ½SCÏÂ¶ÔÓ¦IDµÄSPC
-														if(ss.sc[j].spc[k].deviceid[0] == 0x00){//Ñ°ÕÒdevice idÎª¿ÕµÄSPC
-														mymemcpy(ss.sc[j].spc[k].deviceid,tmp->valuestring,10);
-														tmp = cJSON_GetObjectItem(level2,"model");
-														if(tmp && tmp->valuestring){
-															mymemcpy(ss.sc[j].spc[k].model,tmp->valuestring,strlen(tmp->valuestring));
-														}
-														tmp = cJSON_GetObjectItem(level2,"coord");
-														if(tmp && tmp->valuestring){
-															mymemcpy(ss.sc[j].spc[k].coord,tmp->valuestring,strlen(tmp->valuestring));
-														}
-														double_break = 1;
-														break;
-													}
-												}
-												if(double_break)	{double_break = 0;break;}
-											}
-										}
-										else if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'C')){
-											for(j = 0;j < 5;j++){//ÕÒÑ°SSÏÂ¶ÔÓ¦IDµÄSC
-													//if(strncmp(ss.sc[i].deviceid,tmp->valuestring,8)){
-													if(ss.sc[j].deviceid[0] == 0x00){//Ñ°ÕÒdevice idÎª¿ÕµÄSC
-													mymemcpy(ss.sc[j].deviceid,tmp->valuestring,10);
-													tmp = cJSON_GetObjectItem(level2,"model");
-													if(tmp && tmp->valuestring){
-														mymemcpy(ss.sc[j].model,tmp->valuestring,strlen(tmp->valuestring));
-													}
-													tmp = cJSON_GetObjectItem(level2,"coord");
-													if(tmp && tmp->valuestring){
-														mymemcpy(ss.sc[j].coord,tmp->valuestring,strlen(tmp->valuestring));
-													}
-													break;
-												}	
-											}
-										}
-										else if((*tmp->valuestring == 'S')&&(*(tmp->valuestring+1) == 'T')){
-											for(j = 0;j < 20;j++){//ÕÒÑ°SSÏÂdeviceidÎª¿ÕµÄst
-												//if(strncmp(ss.st[i].deviceid,tmp->valuestring,8)){
-												if(ss.st[j].deviceid[0] == 0x00){//Ñ°ÕÒdevice idÎª¿ÕµÄST
-													mymemcpy(ss.st[j].deviceid,tmp->valuestring,10);
-													tmp = cJSON_GetObjectItem(level2,"model");
-													if(tmp && tmp->valuestring){
-														mymemcpy(ss.st[j].model,tmp->valuestring,strlen(tmp->valuestring));
-													}
-													tmp = cJSON_GetObjectItem(level2,"coord");
-													if(tmp && tmp->valuestring){
-														mymemcpy(ss.st[j].coord,tmp->valuestring,strlen(tmp->valuestring));
-													}
-													break;
-												}
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		cJSON_Delete(root);
-		success_receipt();
-	}
-}
-
 //½âÎöconfig_meshÖ¸Áî
 void deal_config_mesh(u8 *buf)
 {
@@ -920,25 +1652,33 @@ void deal_config_mesh(u8 *buf)
 	{
 		for(i = 0; i < 5;i++){//ÅÐ¶ÏÊÇ²»ÊÇÅäÖÃslc
 			for(j = 0;j < 15;j++){
-				if(!ss.sc[i].slc[j].deviceid[0]){//¸Ãdeviceid²»Îª¿Õ£¬ÒÑ¾­±£´æÓÐÅäÖÃÐÅÏ¢
-					tmp = cJSON_GetObjectItem(root,ss.sc[i].slc[j].deviceid);
-					if(tmp)		ss.sc[i].slc[j].meshid = (u16)tmp->valueint;
-				}
+				//fyl
+//				if(!ss.sc[i].slc[j].deviceid[0]){//¸Ãdeviceid²»Îª¿Õ£¬ÒÑ¾­±£´æÓÐÅäÖÃÐÅÏ¢
+//					tmp = cJSON_GetObjectItem(root,ss.sc[i].slc[j].deviceid);
+//					if(tmp)		ss.sc[i].slc[j].meshid = (u16)tmp->valueint;
+//				}
 			}
 		}
-		for(i = 0; i < 5;i++){//ÅÐ¶ÏÊÇ²»ÊÇÅäÖÃspc
-			for(j = 0;j < 15;j++)
-			if(!ss.sc[i].spc[j].deviceid[0]){//¸Ãdeviceid²»Îª¿Õ£¬ÒÑ¾­±£´æÓÐÅäÖÃÐÅÏ¢
-				tmp = cJSON_GetObjectItem(root,ss.sc[i].spc[j].deviceid);
-				if(tmp)		ss.sc[i].spc[j].meshid = (u16)tmp->valueint;
-			}
+		
+		for(i = 0; i < 5;i++){			//ÅÐ¶ÏÊÇ²»ÊÇÅäÖÃspc
+			for(j = 0;j < 15;j++){
+
+				//fyl
+//				if(!ss.sc[i].spc[j].deviceid[0]){//¸Ãdeviceid²»Îª¿Õ£¬ÒÑ¾­±£´æÓÐÅäÖÃÐÅÏ¢
+//					tmp = cJSON_GetObjectItem(root,ss.sc[i].spc[j].deviceid);
+//					if(tmp) 	ss.sc[i].spc[j].meshid = (u16)tmp->valueint;
+//				}
+
+			}		
 		}
+		
 		for(i = 0; i < 5;i++){//ÅÐ¶ÏÊÇ²»ÊÇÅäÖÃsc
 			if(!ss.sc[i].deviceid[0]){//¸Ãdeviceid²»Îª¿Õ£¬ÒÑ¾­±£´æÓÐÅäÖÃÐÅÏ¢
 				tmp = cJSON_GetObjectItem(root,ss.sc[i].deviceid);
 				if(tmp)		ss.sc[i].meshid = (u16)tmp->valueint;
 			}
 		}
+		
 		for(i = 0; i < 20;i++){//ÅÐ¶ÏÊÇ²»ÊÇÅäÖÃst
 			if(!ss.st[i].deviceid[0]){//¸Ãdeviceid²»Îª¿Õ£¬ÒÑ¾­±£´æÓÐÅäÖÃÐÅÏ¢
 				tmp = cJSON_GetObjectItem(root,ss.st[i].deviceid);
@@ -946,1284 +1686,188 @@ void deal_config_mesh(u8 *buf)
 			}
 		}
 		cJSON_Delete(root);
-		success_receipt();
-	}
-}
-
-//½âÎöconfig_stÖ¸Áî
-void deal_config_st(u8 *buf)
-{
-	cJSON *root,*tmp,*level1,*level2;
-	int i,j,cmd_size;
-	int index = 0;
-	root = cJSON_Parse((char*)buf);
-	ss_cst_count = 0;
-	if(root)
-	{
-		for(j = 0; j < 20;j++){//Ñ°ÕÒÒªÅäÖÃµÄstÊÇ·ñÎª±¾ssËù¹ÜÀíµÄ
-			level1 = cJSON_GetObjectItem(root,ss.st[j].deviceid);
-			if(level1){//ÊÇ±¾ssËù¹ÜÀíµÄst
-				if(level1->type == cJSON_Array){
-					cmd_size = cJSON_GetArraySize(level1);
-					if(cmd_size){
-						ss_cst_count += cmd_size;
-						for(i = 0;i < cmd_size;i++){
-							level2 = cJSON_GetArrayItem(level1,i);
-							if(level2){
-								tmp = cJSON_GetObjectItem(level2,"type");
-								if(tmp){								
-									if(ss_cst[index].type == 0){//¸Ãcst[i]»¹Ã»ÓÐ±»ÅäÖÃ£¬×¢Òâ£ºÍ¨¹ýuart2·¢ËÍ¸østºótypeÐèÇåÁã
-										ss_cst[index].type = tmp->valueint;
-										ss_cst[index].meshid = ss.st[j].meshid;
-										tmp = cJSON_GetObjectItem(level2,"key");
-										if(tmp)	ss_cst[index].key = tmp->valueint;
-										tmp = cJSON_GetObjectItem(level2,"cond");
-										if(tmp && tmp->valuestring)	mymemcpy(ss_cst[index].cond,tmp->valuestring,3);
-										tmp = cJSON_GetObjectItem(level2,"targetID");
-										if(tmp && tmp->valuestring)	mymemcpy(ss_cst[index].target_id,tmp->valuestring,strlen(tmp->valuestring));
-										tmp = cJSON_GetObjectItem(level2,"MDID");
-										if(tmp)	ss_cst[index].mdid = tmp->valueint;
-										tmp = cJSON_GetObjectItem(level2,"CH");
-										if(tmp)	ss_cst[index].ch = tmp->valueint;
-										tmp = cJSON_GetObjectItem(level2,"action");
-										if(tmp && tmp->valuestring)	mymemcpy(ss_cst[index].action,tmp->valuestring,2);
-										tmp = cJSON_GetObjectItem(level2,"value");
-										if(tmp)	ss_cst[index].value = tmp->valueint;
-										else		ss_cst[index].value = 0;
-										index++;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-			cJSON_Delete(root);
-		}
-		success_receipt();
-	}
-}
-//½âÎöconfig_stratgy_hpstÃüÁî
-void deal_config_stragy_hpst(u8 *buf)
-{
-	cJSON *root,*tmp,*level1,*level2,*level3;
-	int i,j,cmd_size;
-	u16 len;
-	int sep_type;//sep_typeÎª1Ê±ÊÇSL£¬Îª2Ê±ÊÇSC
-	root = cJSON_Parse((char*)buf);
-	if (root)
-	{
-		tmp = cJSON_GetObjectItem(root,"cond");
-		if(tmp && tmp->valuestring){
-			len = strlen(tmp->valuestring);
-			for(j=0;j < 20;j++){
-				if(strncmp(tmp->valuestring,ss_cshp[j].cond,len) != 0){
-					ss_cshp[j].id = j;
-					mymemcpy(ss_cshp[j].cond,tmp->valuestring,len);
-					break;
-				}
-				else{//ÒÑ¾­½ÓÊÕ¹ý¸Ãcond
-					return;
-				}
-			}
-		}
-		level1 = cJSON_GetObjectItem(root,"cmd");	
-		if (level1){
-			if(level1->type == cJSON_Array){
-				cmd_size = cJSON_GetArraySize(level1);
-				if(cmd_size){
-					for(i = 0;i < cmd_size;i++){
-						level2 = cJSON_GetArrayItem(level1,i);
-						if(level2){
-							tmp = cJSON_GetObjectItem(level2,"sepid");
-							if(tmp && tmp->valuestring){
-								if (*tmp->valuestring == 'S')
-									if(*(tmp->valuestring+1) == 'L')
-									{sep_type = 1;mymemcpy(ss_cshp[j].sl_ap[ss_cshp[j].sl_num].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_cshp[j].sl_num++;}
-									else
-									{sep_type = 2;mymemcpy(ss_cshp[j].sp_ap[ss_cshp[j].sp_num].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_cshp[j].sp_num++;}
-							}
-							tmp = cJSON_GetObjectItem(level2,"seqid");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_cshp[j].sl_ap[ss_cshp[j].sl_num].seqid = tmp->valueint;
-								else if(sep_type == 2)	ss_cshp[j].sp_ap[ss_cshp[j].sp_num].seqid = tmp->valueint;
-							}
-							tmp = cJSON_GetObjectItem(level2,"CH");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_cshp[j].sl_ap[ss_cshp[j].sl_num].ch = tmp->valueint;
-								else if(sep_type == 2)	ss_cshp[j].sp_ap[ss_cshp[j].sp_num].ch = tmp->valueint;
-							}
-							tmp = cJSON_GetObjectItem(level2,"action");
-							if(tmp && tmp->valuestring)
-							{
-								if(sep_type == 1)	mymemcpy(ss_cshp[j].sl_ap[ss_cshp[j].sl_num].action,tmp->valuestring,strlen(tmp->valuestring));
-								else if(sep_type == 2)	mymemcpy(ss_cshp[j].sp_ap[ss_cshp[j].sp_num].action,tmp->valuestring,strlen(tmp->valuestring));
-							}
-							tmp = cJSON_GetObjectItem(level2,"topos");
-							if(tmp && tmp->valuestring)
-							{
-								if(sep_type == 1)	mymemcpy(ss_cshp[j].sl_ap[ss_cshp[j].sl_num].topos,tmp->valuestring,strlen(tmp->valuestring));
-								else if(sep_type == 2)	mymemcpy(ss_cshp[j].sp_ap[ss_cshp[j].sp_num].topos,tmp->valuestring,strlen(tmp->valuestring));
-							}
-							level3 = cJSON_GetObjectItem(level2,"option");
-							if(level3)
-							{
-								tmp = cJSON_GetObjectItem(level3,"durations");
-								if(tmp)
-								{
-									ss_cshp[j].sl_ap[ss_cshp[j].sl_num].option.duration = tmp->valueint;
-								}
-								tmp = cJSON_GetObjectItem(level3,"erase");
-								if(tmp)
-								{
-									ss_cshp[j].sl_ap[ss_cshp[j].sl_num].option.erase = tmp->valueint;
-								}
-							}
-							tmp = cJSON_GetObjectItem(level2,"stseq");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_cshp[j].sl_ap[ss_cshp[j].sl_num].stseq = tmp->valueint;
-								else if(sep_type == 2)	ss_cshp[j].sp_ap[ss_cshp[j].sp_num].stseq = tmp->valueint;
-								
-							}
-							tmp = cJSON_GetObjectItem(level2,"timeout");
-							if(tmp)
-							{
-								if(sep_type == 1)	ss_cshp[j].sl_ap[ss_cshp[j].sl_num].timeout = tmp->valueint;
-								else if(sep_type == 2)	ss_ap.sp_ap[ss_cshp[j].sp_num].timeout = tmp->valueint;
-							}
-						}
-					}
-				}
-			}
-			else if(level1->type == cJSON_Object)//´ËÊ±Ö»ÓÐÒ»¸öseqid£¬¼´Ö»¿ØÖÆSL»òSP
-			{
-				tmp = cJSON_GetObjectItem(level1,"sepid");
-				if(tmp && tmp->valuestring)
-				{
-					if (*tmp->valuestring == 'S')
-						if(*tmp->valuestring+1 == 'L')
-						{sep_type = 1;mymemcpy(ss_cshp[j].sl_ap[0].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_cshp[j].sl_num++;}
-						else
-						{sep_type = 2;mymemcpy(ss_cshp[j].sp_ap[0].sepid,tmp->valuestring,strlen(tmp->valuestring));ss_cshp[j].sp_num++;}
-				}
-				tmp = cJSON_GetObjectItem(level2,"seqid");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_cshp[j].sl_ap[0].seqid = tmp->valueint;
-					else if(sep_type == 2)	ss_cshp[j].sp_ap[0].seqid = tmp->valueint;
-				}
-				tmp = cJSON_GetObjectItem(level2,"CH");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_cshp[j].sl_ap[0].ch = tmp->valueint;
-					else if(sep_type == 2)	ss_cshp[j].sp_ap[0].ch = tmp->valueint;
-				}
-				tmp = cJSON_GetObjectItem(level2,"action");
-				if(tmp && tmp->valuestring)
-				{
-					if(sep_type == 1)	mymemcpy(ss_cshp[j].sl_ap[0].action,tmp->valuestring,strlen(tmp->valuestring));
-					else if(sep_type == 2)	mymemcpy(ss_cshp[j].sp_ap[0].action,tmp->valuestring,strlen(tmp->valuestring));
-				}
-				tmp = cJSON_GetObjectItem(level2,"topos");
-				if(tmp && tmp->valuestring)
-				{
-					if(sep_type == 1)	mymemcpy(ss_cshp[j].sl_ap[0].topos,tmp->valuestring,strlen(tmp->valuestring));
-					else if(sep_type == 2)	mymemcpy(ss_cshp[j].sp_ap[0].topos,tmp->valuestring,strlen(tmp->valuestring));
-				}
-				level3 = cJSON_GetObjectItem(level2,"option");
-				if(level3)
-				{
-					tmp = cJSON_GetObjectItem(level3,"durations");
-					if(tmp)
-					{
-						ss_cshp[j].sl_ap[0].option.duration = tmp->valueint;
-					}
-					tmp = cJSON_GetObjectItem(level3,"erase");
-					if(tmp)
-					{
-						ss_cshp[j].sl_ap[0].option.erase = tmp->valueint;
-					}
-				}
-				tmp = cJSON_GetObjectItem(level2,"stseq");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_cshp[j].sl_ap[0].stseq = tmp->valueint;
-					else if(sep_type == 2)	ss_cshp[j].sp_ap[0].stseq = tmp->valueint;
-					
-				}
-				tmp = cJSON_GetObjectItem(level2,"timeout");
-				if(tmp)
-				{
-					if(sep_type == 1)	ss_cshp[j].sl_ap[0].timeout = tmp->valueint;
-					else if(sep_type == 2)	ss_cshp[j].sp_ap[0].timeout = tmp->valueint;
-				}
-			}
-		}
-	cJSON_Delete(root);
-	success_receipt();
-	}
-}
-
-//½âÎöconfig_strategy_htspÃüÁî²¢ÇÒ»Ø¸´
-void deal_config_strategy_htsp(u8 *buf)//bufÊÇtopicÄÚÈÝ
-{
-	u8 stid,i,j,sepidnum = 0;
-	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
-	char *payload;
-	char *topic = "/config/strategy/htsp";
-	u8 len = (u8)strlen(buf);
-	switch(len - 27){
-		case 1:
-			stid = (u8)(*(buf+27) - '0');
-		break;
-		case 2:
-			stid = (u8)((*(buf+27) - '0')*10) + (u8)(*(buf+28) - '0');
-		break;
-	}
-	if(stid > 20)	return;//id³¬³ö·¶Î§Ö±½Ó·µ»Ø
-	sepidnum = ss_cshp[stid].sl_num + ss_cshp[stid].sp_num;
-	cs = cJSON_CreateObject();
-	cJSON_AddStringToObject(cs,"cond",ss_cshp[stid].cond);
-	if(sepidnum == 1){//Ö»ÓÐ1Ìõ´¦ÀíÃüÁî
-		cJSON_AddItemToObject(cs, "cmd",sub_cs=cJSON_CreateArray());
-		cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-		if(ss_cshp[stid].sl_num == 1){
-			cJSON_AddNumberToObject(sub_cs2,"seqid",ss_cshp[stid].sl_ap[0].seqid);
-			cJSON_AddStringToObject(sub_cs2,"sepid",ss_cshp[stid].sl_ap[0].sepid);
-			cJSON_AddNumberToObject(sub_cs2,"CH",ss_cshp[stid].sl_ap[0].ch);
-			cJSON_AddStringToObject(sub_cs2,"action",ss_cshp[stid].sl_ap[0].action);
-			cJSON_AddStringToObject(sub_cs2,"topos",ss_cshp[stid].sl_ap[0].topos);
-			cJSON_AddItemToObject(sub_cs2, "option",sub_cs3=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs3,"duration",ss_cshp[stid].sl_ap[0].option.duration);
-			cJSON_AddNumberToObject(sub_cs3,"erase",ss_cshp[stid].sl_ap[0].option.erase);
-			cJSON_AddNumberToObject(sub_cs2,"stseq",ss_cshp[stid].sl_ap[0].stseq);
-			cJSON_AddNumberToObject(sub_cs2,"timeout",ss_cshp[stid].sl_ap[0].timeout);
-		}
-		else if(ss_cshp[stid].sp_num == 1){
-			cJSON_AddNumberToObject(sub_cs2,"seqid",ss_cshp[stid].sp_ap[0].seqid);
-			cJSON_AddStringToObject(sub_cs2,"sepid",ss_cshp[stid].sp_ap[0].sepid);
-			cJSON_AddNumberToObject(sub_cs2,"CH",ss_cshp[stid].sp_ap[0].ch);
-			cJSON_AddStringToObject(sub_cs2,"action",ss_cshp[stid].sp_ap[0].action);
-			cJSON_AddStringToObject(sub_cs2,"topos",ss_cshp[stid].sp_ap[0].topos);
-			cJSON_AddNumberToObject(sub_cs2,"stseq",ss_cshp[stid].sp_ap[0].stseq);
-			cJSON_AddNumberToObject(sub_cs2,"timeout",ss_cshp[stid].sp_ap[0].timeout);
-		}
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x43,0x01,0x15,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	}
-	else if(sepidnum > 1){
-		cJSON_AddItemToObject(cs, "cmd",sub_cs=cJSON_CreateArray());
-		for(i = 1;i < sepidnum;i++){//sepid´Ó1µ½sepidnum±éÀúss_cshp[stid]ÖÐµÄsl_apºÍsp_ap½á¹¹£¬´´½¨ÏàÓ¦µÄcjsonÊý¾Ý
-			for(j=1;j < ss_cshp[stid].sl_num;j++){
-				if(ss_cshp[stid].sl_ap[j].seqid == i){//ËµÃ÷´ËÊ±ÕÒµ½ÁËseqid¶ÔÓ¦µÄsl_ap½á¹¹
-					cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs2,"seqid",ss_cshp[stid].sl_ap[j].seqid);
-					cJSON_AddStringToObject(sub_cs2,"sepid",ss_cshp[stid].sl_ap[j].sepid);
-					cJSON_AddNumberToObject(sub_cs2,"CH",ss_cshp[stid].sl_ap[j].ch);
-					cJSON_AddStringToObject(sub_cs2,"action",ss_cshp[stid].sl_ap[j].action);
-					cJSON_AddStringToObject(sub_cs2,"topos",ss_cshp[stid].sl_ap[j].topos);
-					cJSON_AddItemToObject(sub_cs2, "option",sub_cs3=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"duration",ss_cshp[stid].sl_ap[j].option.duration);
-					cJSON_AddNumberToObject(sub_cs3,"erase",ss_cshp[stid].sl_ap[j].option.erase);
-					cJSON_AddNumberToObject(sub_cs2,"stseq",ss_cshp[stid].sl_ap[j].stseq);
-					cJSON_AddNumberToObject(sub_cs2,"timeout",ss_cshp[stid].sl_ap[j].timeout);
-					break;
-				}
-			}
-			//´ËÊ±Ñ°ÕÒµÄsepidÎª"i"µÄ²»ÊÇsl_ap½á¹¹£¬¶øÊÇsp_ap½á¹¹
-			for(j=1;j < ss_cshp[stid].sp_num;j++){
-				if(ss_cshp[stid].sl_ap[j].seqid == i){
-					cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs2,"seqid",ss_cshp[stid].sp_ap[0].seqid);
-					cJSON_AddStringToObject(sub_cs2,"sepid",ss_cshp[stid].sp_ap[0].sepid);
-					cJSON_AddNumberToObject(sub_cs2,"CH",ss_cshp[stid].sp_ap[0].ch);
-					cJSON_AddStringToObject(sub_cs2,"action",ss_cshp[stid].sp_ap[0].action);
-					cJSON_AddStringToObject(sub_cs2,"topos",ss_cshp[stid].sp_ap[0].topos);
-					cJSON_AddNumberToObject(sub_cs2,"stseq",ss_cshp[stid].sp_ap[0].stseq);
-					cJSON_AddNumberToObject(sub_cs2,"timeout",ss_cshp[stid].sp_ap[0].timeout);
-					break;
-				}
-			}
-		}
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x43,0x01,0x15,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
-		send_message(&Txto4004);
+		ssp_recepit_response(RECEIPT_CODE_SUCCESS);
 	}
 	
 }
-//Ö÷¶¯·¢ËÍdecive_status£¬ÔÚ½ÓÊÕµ½ST action¿ØÖÆSC£¬SC»Ø¸´¸øSSºó
-void send_device_status(u8 *deviceid)	//´«ÈëdeviceidÊÇSLC»òSPCµÄdevice id
+
+
+
+
+
+/*----------------------------------------------------------------------------
+	//
+-----------------------------------------------------------------------------*/
+void ssp_calcu_remain_length(Txmessage *tx)
 {
-	u8 i,j;
-	u8 doule_break = 0;
-	cJSON *cs,*sub_cs;
-	char *payload;
-	char *topic = "/device/status";
-	cs = cJSON_CreateObject();
-	for(i = 0;i < 5;i++){
-		for(j = 0;j < 15;j++){
-			if(strncmp(deviceid,ss.sc[i].slc[j].deviceid,10) == 0){//ÕÒµ½Óëss_des.sepid¶ÔÓ¦µÄslc
-				cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
-				cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
-				cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
-				cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
-				doule_break = 1;
-				break;
-			}
-			if(strncmp(deviceid,ss.sc[i].spc[j].deviceid,10) == 0){//ÕÒµ½Óëss_des.sepid¶ÔÓ¦µÄslc
-				cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
-				cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
-				cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
-				cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
-				doule_break = 1;
-				break;
-			}
-		}
-		if(doule_break)	{doule_break = 0;break;}
-	}
-	payload = cJSON_PrintUnformatted(cs);
-	if(payload)	cJSON_Delete(cs);
-	init_tx_message(0x43,0x01,14,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
-	send_message(&Txto4004);
-}
-
-//½âÎödecive_statusÃüÁî
-void deal_device_status(u8 *buf)//bufÊÇtopicÄÚÈÝ
-{
-	u8 i,j;
-	u8 doule_break = 0;
-	cJSON *cs,*sub_cs;
-	char *payload;
-	char *topic = "";
-	u8 type;
-	u8 buflen;
-	buflen = strlen(buf);
-	if(buflen == 14)												type = 3;		//SCÏÂËùÓÐSLCºÍSPC
-	else if(buflen == 31)										type = 1;		//Õë¶ÔÄ³¸öSLC»òSPCËùÓÐÍ¨µÀ
-	else if(buflen > 31)										type = 2;		//Õë¶ÔÄ³¸öSLC»òSPÄ³¸öÍ¨µÀ
-	if(type == 1){
-		mymemcpy(ss_des.sepid,(buf+21),10);
-		if(ss_des.sepid[0]){
-			ack_des2 = 1;
-			cs = cJSON_CreateObject();
-			if(ack_des2){
-				ack_des2 = 0;
-				for(i = 0;i < 5;i++){
-					for(j = 0;j < 15;j++){
-						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,10) == 0){//ÕÒµ½Óëss_des.sepid¶ÔÓ¦µÄslc
-							cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
-							cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
-							cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
-							cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
-							cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
-							doule_break = 1;
-							break;
-						}
-						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,10) == 0){//ÕÒµ½Óëss_des.sepid¶ÔÓ¦µÄslc
-							cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
-							cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
-							cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
-							cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
-							cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
-							doule_break = 1;
-							break;
-						}
-					}
-					if(doule_break)	{doule_break = 0;break;}
-				}
-				payload = cJSON_PrintUnformatted(cs);
-				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
-				send_message(&Txto4004);
-			}
-		}
-	}
-	else if(type == 2){
-		mymemcpy(ss_des.sepid,(buf+21),10);
-		mymemcpy(ss_des.ch,(buf+35),2);
-		if((ss_des.sepid[0]) && (ss_des.ch[0]))	{
-			ack_des3 = 1;
-			ss_des.ch[0] = ss_des.ch[0] - '0';
-			cs = cJSON_CreateObject();
-			if(ack_des3){
-				ack_des3 = 0;
-				for(i = 0;i < 5;i++){
-					for(j = 0;j < 15;j++){
-						if(strncmp(ss_des.sepid,ss.sc[i].slc[j].deviceid,10) == 0){//ÕÒµ½Óëss_des.sepid¶ÔÓ¦µÄslc
-							cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
-							if((ss_des.ch[0] & 0x01) == 0x01)	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
-							if((ss_des.ch[0] & 0x02) == 0x02)	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
-							if((ss_des.ch[0] & 0x04) == 0x04)	cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
-							if((ss_des.ch[0] & 0x08) == 0x08)	cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
-							doule_break = 1;
-							break;
-						}
-						if(strncmp(ss_des.sepid,ss.sc[i].spc[j].deviceid,10) == 0){//ÕÒµ½Óëss_des.sepid¶ÔÓ¦µÄslc
-							cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
-							if((ss_des.ch[0] & 0x01) == 0x01)	cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
-							if((ss_des.ch[0] & 0x02) == 0x02)	cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
-							if((ss_des.ch[0] & 0x04) == 0x04)	cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
-							if((ss_des.ch[0] & 0x08) == 0x08)	cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
-							doule_break = 1;
-							break;
-						}
-					}
-					if(doule_break)	{doule_break = 0;break;}
-				}
-				payload = cJSON_PrintUnformatted(cs);
-				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
-				send_message(&Txto4004);
-			}
-		}
-	}
-	else if(type == 3){
-		cs = cJSON_CreateObject();
-		for(i = 0;i < 5;i++){
-			for(j = 0;j < 15;j++){
-				if(ss.sc[i].slc[j].deviceid[0]){//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬
-					cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
-					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
-				}
-				if(ss.sc[i].spc[j].deviceid[0]){//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬
-					cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
-					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
-				}
-			}
-		}
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	}
-	memset(ss_des.ch,0,2);memset(ss_des.sepid,0,12);
-}
-
-
-
-
-//½âÎöqeÉî¶ÈÃüÁî
-
-void deal_qe(u8 *buf)//bufÊÇtopicÄÚÈÝ
-{
-	int i = 0;
-	int cnt = 0;
-	int commacnt = 0;
-	int index[12];
-	char data1[20];
-	char data2[20];
-	char data3[20];
-	char data4[20];
-	char data5[20];
-	char data6[20];
-	char data7[500];
-	char data8[20];
-	char data9[20];
-	char data10[20];
-	char data11[20];
-	char comma[] = ",";
-	char *md;
-	memset(index,0,12);
-	memset(data1,0,20);memset(data2,0,20);memset(data3,0,20);memset(data4,0,20);memset(data5,0,20);
-	memset(data6,0,20);memset(data7,0,500);memset(data8,0,20);memset(data9,0,20);memset(data10,0,20);
-	memset(data11,0,20);
-	//qeµÄtopicÃ¿2¸ö/×ª»»³ÉÊý×é
-	for(i = 0; i < strlen(buf);i++){
-		if(*(buf + i) == 0x2F)	{index[cnt++] = i;}
-	}
-	if(index[1])	mymemcpy(data1,(buf+index[0]+1),index[1]-index[0]-1);
-	if(index[2])	mymemcpy(data2,(buf+index[1]+1),index[2]-index[1]-1);
-	if(index[3])	mymemcpy(data3,(buf+index[2]+1),index[3]-index[2]-1);
-	if(index[4])	mymemcpy(data4,(buf+index[3]+1),index[4]-index[3]-1);
-	if(index[5])	mymemcpy(data5,(buf+index[4]+1),index[5]-index[4]-1);
-	if(index[6])	mymemcpy(data6,(buf+index[5]+1),index[6]-index[5]-1);
-	if(cnt == 6)	mymemcpy(data7,(buf+index[6]+1),strlen(buf)-index[6]-1);
-	else{
-	if(index[7])	mymemcpy(data7,(buf+index[6]+1),index[7]-index[6]-1);
-	if(index[8])	mymemcpy(data8,(buf+index[7]+1),index[8]-index[7]-1);
-	if(cnt == 9)	mymemcpy(data9,(buf+index[8]+1),strlen(buf)-index[8]-1);
-	else{
-		if(index[9])	mymemcpy(data9,(buf+index[8]+1),index[9]-index[8]-1);
-		if(index[10])	{mymemcpy(data10,(buf+index[9]+1),index[10]-index[9]-1);mymemcpy(data11,(buf+index[10]+1),strlen(buf)-index[10]-1);}
-		}
-	}
-
-	if(strncmp(data2,"sepid",5) == 0){
-		mymemcpy(ss_qe.sepid,data3,10);
-	}
-	if(strncmp(data4,"action",6) == 0){
-		if(strlen(data5) == 2){	
-			mymemcpy(ss_qe.action,data5,2);
-			if((strncmp(data5,"DM",2) == 0)||(strncmp(data5,"WP",2) == 0)){
-				if(strncmp(data6,"MD",2) == 0){
-					if(strlen(data7) == 2)			ss_qe.MDID = (int)(data7[0]-'0')*10 + (int)(data7[1]-'0');
-					else if(strlen(data7) == 1)	ss_qe.MDID = (int)(data7[0]-'0');
-				}
-				if(strncmp(data8,"CH",2) == 0)
-					ss_qe.CH = (int)(data9[0] - '0');
-				if(strncmp(data10,"topos",5) == 0){
-					if((data11[0] ==  'F')&&(data11[0] == 'F'))			ss_qe.topos = 0x64;
-					else																						ss_qe.topos = (int)(data11[0] - '0')*10 + (int)(data11[1] - '0');
-				}
-			}
-			else if(strncmp(data5,"UR",2) == 0){
-				if(strncmp(data6,"type",4) == 0){
-					ss_qe.type = (int)(data7[0] - '0');
-					if(strncmp(data8,"code",4) == 0){
-						mymemcpy(ss_qe.code,data9,strlen(data9));
-					}
-				}
-				else if(strncmp(data6,"raw",3) == 0){
-					mymemcpy(ss_qe.code,data7,strlen(data7));
-				}
-			}
-			else if(strncmp(data5,"CP",2) == 0){
-				if(strncmp(data6,"CH",1) == 0){
-					ss_qe.CH = data7[0] - '0';
-					if(strncmp(data8,"topos",5) == 0){
-						if((data9[0] ==  'F')&&(data9[0] == 'F'))			ss_qe.topos = 0x64;
-						else																					ss_qe.topos = (int)(data9[0] - '0')*10 + (int)(data9[1] - '0');
-					}
-				}
-			}
-		}
-		else if(strlen(data5) == 3){
-			mymemcpy(ss_qe.action,data5,3);
-			if(strncmp(data6,"MD",2) == 0){
-				md = strtok(data7,comma);
-				while(md != NULL){
-					commacnt++;
-					switch(commacnt){
-						case 1:
-							if(strlen(md) == 2)	ss_qe.MDID = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID = (int)(*md - '0');
-							break;
-						case 2:
-							if(strlen(md) == 2)	ss_qe.MDID2 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID2 = (int)(*md - '0');
-							break;
-						case 3:
-							if(strlen(md) == 2)	ss_qe.MDID3 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID3 = (int)(*md - '0');
-							break;
-						case 4:
-							if(strlen(md) == 2)	ss_qe.MDID4 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID4 = (int)(*md - '0');
-							break;
-						case 5:
-							if(strlen(md) == 2)	ss_qe.MDID5 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID5 = (int)(*md - '0');
-							break;
-						case 6:
-							if(strlen(md) == 2)	ss_qe.MDID6 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID6 = (int)(*md - '0');
-							break;
-						case 7:
-							if(strlen(md) == 2)	ss_qe.MDID7 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID7 = (int)(*md - '0');
-							break;
-						case 8:
-							if(strlen(md) == 2)	ss_qe.MDID8 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID8 = (int)(*md - '0');
-							break;
-						case 9:
-							if(strlen(md) == 2)	ss_qe.MDID9 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID9 = (int)(*md - '0');
-							break;
-						case 10:
-							if(strlen(md) == 2)	ss_qe.MDID10 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID10 = (int)(*md - '0');
-							break;
-						case 11:
-							if(strlen(md) == 2)	ss_qe.MDID11 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID11 = (int)(*md - '0');
-							break;
-						case 12:
-							if(strlen(md) == 2)	ss_qe.MDID12 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID12 = (int)(*md - '0');
-							break;
-						case 13:
-							if(strlen(md) == 2)	ss_qe.MDID13 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID13 = (int)(*md - '0');
-							break;
-						case 14:
-							if(strlen(md) == 2)	ss_qe.MDID14 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID14 = (int)(*md - '0');
-							break;
-						case 15:
-							if(strlen(md) == 2)	ss_qe.MDID15 = (int)(*md - '0')*10 + (int)(*(md+1) - '0');
-							else if(strlen(md) == 1)	ss_qe.MDID15 = (int)(*md - '0');
-							break;
-						default:
-							break;
-					}
-					md = strtok(NULL,comma);
-				}
-			}
-			commacnt = 0;
-			if(strncmp(data8,"CH",2) == 0){
-				md = strtok(data9,comma);
-				while(md != NULL){
-					commacnt++;
-					switch(commacnt){
-						case 1:
-							ss_qe.CH = (int)(*md - '0');
-							break;
-						case 2:
-							ss_qe.CH2 = (int)(*md - '0');
-							break;
-						case 3:
-							ss_qe.CH3 = (int)(*md - '0');
-							break;
-						case 4:
-							ss_qe.CH4 = (int)(*md - '0');
-							break;
-						case 5:
-							ss_qe.CH5 = (int)(*md - '0');
-							break;
-						case 6:
-							ss_qe.CH6 = (int)(*md - '0');
-							break;
-						case 7:
-							ss_qe.CH7 = (int)(*md - '0');
-							break;
-						case 8:
-							ss_qe.CH8 = (int)(*md - '0');
-							break;
-						case 9:
-							ss_qe.CH9 = (int)(*md - '0');
-							break;
-						case 10:
-							ss_qe.CH10 = (int)(*md - '0');
-							break;
-						case 11:
-							ss_qe.CH11 = (int)(*md - '0');
-							break;
-						case 12:
-							ss_qe.CH12 = (int)(*md - '0');
-							break;
-						case 13:
-							ss_qe.CH13 = (int)(*md - '0');
-							break;
-						case 14:
-							ss_qe.CH14 = (int)(*md - '0');
-							break;
-						case 15:
-							ss_qe.CH15 = (int)(*md - '0');
-							break;
-						default:
-							break;
-					}
-					md = strtok(NULL,comma);
-				}
-			}
-			if(strncmp(data10,"topos",5) == 0){
-				if((data11[0] ==  'F')&&(data11[0] == 'F'))			ss_qe.topos = 0x64;
-				else																						ss_qe.topos = (int)(data11[0] - '0')*10 + (int)(data11[1] - '0');
-			}
-		}
-		//free(data1);free(data2);free(data3);free(data4);free(data5);free(data6);
-		//free(data7);free(data8);free(data9);free(data10);free(data11);
-	}
+	u32 remainLen;
 	
-	/*
-	while(*(buf+i) != 0x2F)	i++; 	
-	mymemcpy(ss_qe.sepid,(buf+10),(i-10));
-	i++;
-	//action
-	i += 7;
-	if(*(buf + i) == 'D'){
-		ss_qe.action[0] = *(buf+i);i++;
-		ss_qe.action[1] = *(buf+i);i++;
-		if(*(buf+i) == 'M'){	//¶àÄ£¿é£¬¶àÍ¨µÀ
-			ss_qe.action[2] = *(buf+i);
-			i += 4;j=i;
-			//MD
-			while(*(buf+i) != 0x2F)	i++;//MD×Ü¹²ÓÐi-j¸öÊý
-			for(k = 0; k < i-j;k++){
-				if(*(buf+j+k) == 0x2C)	commacnt++;
-			}
-			switch(commacnt){
-				case 1://Í¬Ê±¿ØÖÆ2¸öÄ£¿é
-					k=j;
-					while(*(buf+j) != 0x2C)	j++;
-					switch(j-k){
-						case 1:
-							ss_qe.MDID = (int)(*(buf + k) - '0');
-						break;
-						case 2:
-							ss_qe.MDID = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
-						break;
-					}
-					j++;k=j;
-					while(*(buf+j) != 0x2C)	j++;
-					switch(j-k){
-						case 1:
-							ss_qe.MDID2 = (int)(*(buf + k) - '0');
-						break;
-						case 2:
-							ss_qe.MDID2 = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
-						break;
-					}
-					break;
-				case 2:
-					break;
-				case 3:
-					break;
-				case 4:
-					break;
-				case 5:
-					break;
-				case 6:
-					break;
-				case 7:
-					break;
-				case 8:
-					break;
-				case 9:
-					break;
-				case 10:
-					break;
-				case 11:
-					break;
-				case 12:
-					break;
-				case 13:
-					break;
-				case 14:
-					break;
-				default:
-					break;
-			}
-			i++;j=i;
-			//CH,CH¹Ì¶¨Îª1Î»Êý
-			while(*(buf+i) != 0x2F)	i++;//MD×Ü¹²ÓÐi-j¸öÊý
-			for(k = 0; k < i-j;k++){
-				if(*(buf+j+k) == 0x2C)	commacnt++;
-			}
-			switch(commacnt){
-				case 1:
-					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
-					ss_qe.CH2 = (int)(*(buf+j) - '0');
-					break;
-				case 2:
-					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
-					ss_qe.CH2 = (int)(*(buf+j) - '0');j+2;
-					ss_qe.CH3 = (int)(*(buf+j) - '0');
-					break;
-				default:
-					break;
-			}
-			i += 7;
-			//topos
-			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
-			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			//duration
-			i += 11;
-			if(*(buf+i) == 0x2F){
-				i++;
-				ss_qe.duration = (int)(*(buf+i) - '0');
-			}
-		}
-		else if(*(buf+i) == 0x2F){//µ¥Ä£¿éµ¥Í¨µÀ
-			//MD
-			i += 3;j=i;
-			while(*(buf+i) != 0x2F)	i++;
-			//MDÓÐi-j¸öÊý
-			switch(i-j){
-				case 1:
-					ss_qe.MDID = (int)(*(buf + j) - '0');
-					break;
-				case 2:
-					ss_qe.MDID = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
-					break;
-			}
-			//CH,CH¹Ì¶¨Îª1Î»Êý
-			i++;
-			ss_qe.CH = (int)(*(buf + i) - '0');
-			//topos£¬¹Ì¶¨Îª2Î»Êý
-			i += 7;
-			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
-			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			//duration
-			i += 11;
-			if(*(buf+i) == 0x2F){
-				i++;
-				ss_qe.duration = (int)(*(buf+i) - '0');
-			}
-		}
-	}
-	else if(*(buf + i) == 'W'){
-		ss_qe.action[0] = *(buf+i);i++;
-		ss_qe.action[1] = *(buf+i);i++;
-		if(*(buf+i) == 'M'){
-			ss_qe.action[2] = *(buf+i);
-			i += 4;j=i;
-			//MD
-			while(*(buf+i) != 0x2F)	i++;//MD×Ü¹²ÓÐi-j¸öÊý
-			for(k = 0; k < i-j;k++){
-				if(*(buf+j+k) == 0x2C)	commacnt++;
-			}
-			switch(commacnt){
-				case 1://Í¬Ê±¿ØÖÆ2¸öÄ£¿é
-					k=j;
-					while(*(buf+j) != 0x2C)	j++;
-					switch(j-k){
-						case 1:
-							ss_qe.MDID = (int)(*(buf + k) - '0');
-						break;
-						case 2:
-							ss_qe.MDID = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
-						break;
-					}
-					j++;k=j;
-					while(*(buf+j) != 0x2C)	j++;
-					switch(j-k){
-						case 1:
-							ss_qe.MDID2 = (int)(*(buf + k) - '0');
-						break;
-						case 2:
-							ss_qe.MDID2 = (int)(*(buf + k) - '0')*10 + (int)(*(buf + k+1) - '0');
-						break;
-					}
-					break;
-				case 2:
-					break;
-				case 3:
-					break;
-				case 4:
-					break;
-				case 5:
-					break;
-				case 6:
-					break;
-				case 7:
-					break;
-				case 8:
-					break;
-				case 9:
-					break;
-				case 10:
-					break;
-				case 11:
-					break;
-				case 12:
-					break;
-				case 13:
-					break;
-				case 14:
-					break;
-				default:
-					break;
-			}
-			i++;j=i;
-			//CH,CH¹Ì¶¨Îª1Î»Êý
-			while(*(buf+i) != 0x2F)	i++;//MD×Ü¹²ÓÐi-j¸öÊý
-			for(k = 0; k < i-j;k++){
-				if(*(buf+j+k) == 0x2C)	commacnt++;
-			}
-			switch(commacnt){
-				case 1:
-					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
-					ss_qe.CH2 = (int)(*(buf+j) - '0');
-					break;
-				case 2:
-					ss_qe.CH = (int)(*(buf+j) - '0');j+2;
-					ss_qe.CH2 = (int)(*(buf+j) - '0');j+2;
-					ss_qe.CH3 = (int)(*(buf+j) - '0');
-					break;
-				default:
-					break;
-			}
-			i += 7;
-			//topos
-			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
-			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			
-		}
-		else if(*(buf+i) == 0x2F){
-			//MD
-			i += 3;j=i;
-			while(*(buf+i) != 0x2F)	i++;
-			//MDÓÐi-j¸öÊý
-			switch(i-j){
-				case 1:
-					ss_qe.MDID = (int)(*(buf + j) - '0');
-					break;
-				case 2:
-					ss_qe.MDID = (int)(*(buf + j) - '0')*10 + (int)(*(buf + j+1) - '0');
-					break;
-			}
-			//CH,CH¹Ì¶¨Îª2Î»Êý
-			i++;
-			ss_qe.CH = (int)(*(buf + i) - '0');
-			i += 7;
-			if((*(buf + i) == 'F')&&(*(buf + i+1) == 'F'))			ss_qe.topos = 0x64;
-			else																								ss_qe.topos = (int)(*(buf + i) - '0')*10 + (int)(*(buf + i+1) - '0');
-			//duration
-			i += 11;
-			if(*(buf+i) == 0x2F){
-				i++;
-				ss_qe.duration = (int)(*(buf+i) - '0');
-			}
-		}
-	}
-	else if(*(buf + i) == 'U'){
-		ss_qe.action[0] = *(buf+i);i++;
-		ss_qe.action[1] = *(buf+i);i++;
-		i++;k = 0;
-		if(*(buf+i) == 'c'){
-			//type
-			i += 5;
-			ss_qe.type = (int)(*(buf+i) - '0');
-			//code
-			i += 7;
-			while(*(buf+i))	{ss_qe.code[k++] = *(buf+i);i++;}
-		}
-		else if(*(buf+i) == 'r'){
-			//raw
-			i += 4;
-			while(*(buf+i))	{ss_qe.raw[k++] = *(buf+i);i++;}
-		}
-		
-	}
-	*/
-}
-
-//½âÎöalarmÉî¶ÈÖ¸Áî
-void dela_alarm(u8 *buf)//bufÊ±topicÄÚÈÝ
-{
-	int i = 13;
-	while(*(buf+i) != 0x2F)	i++; 	
-	mymemcpy(ss_alarm.sepid,(buf+13),(i-13));
-	i+= 4;
-	ss_alarm.level = *(buf + i) - '0';//levelÖµ¿ÉÄÜÎª1£¬2£¬3
-	success_receipt();
-}
-
-/**************************************»Ø¸´sspº¯Êý************************************************/
-
-void success_receipt(void)
-{
-	/*
-	u8 *send_buf,*temp_send_buf;
-	u16 send_payload_len;
-	char *send_payload_buf;
-	cJSON *root;
-	root=cJSON_CreateObject();       
-	cJSON_AddItemToObject(root, "code", cJSON_CreateString("0x0200000"));     
-	cJSON_AddItemToObject(root, "msg", cJSON_CreateString("operation are Successfully Performed")); 
-	send_payload_buf =cJSON_PrintUnformatted(root);
-	cJSON_Delete(root); 
-	send_payload_len = strlen(send_payload_buf);
-	mymemcpy(Txto4004.tx_payload,send_payload_buf,send_payload_len);
-	send_buf = temp_send_buf = mymalloc(send_payload_len+5);
-	*send_buf++ = Txto4004.tx_fix_header.ch.first_ch_byte = 0x83;
-	*send_buf++ = (3 + send_payload_len);
-	*send_buf++	= Txto4004.tx_var_header.version = 0x01;
-	*send_buf++	= Txto4004.tx_var_header.message_id_H = Rxfr4004.rx_var_header.message_id_H;
-	*send_buf++	= Txto4004.tx_var_header.message_id_L = Rxfr4004.rx_var_header.message_id_L;
-	mystrncat(send_buf,Txto4004.tx_payload,send_payload_len);
-	//Usart1_Send(temp_send_buf,(5 + send_payload_len));
-	//while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
-	addNodeToUartTxSLLast(temp_send_buf,(5 + send_payload_len));
-	mymemset(Txto4004.tx_payload,0,send_payload_len);
-	//free(send_payload_buf);
-	//myfree(send_buf);
-	*/
-	cJSON *cs;
-	char *payload;
-	char *topic = "";
-	cs = cJSON_CreateObject();
-	cJSON_AddItemToObject(cs, "code", cJSON_CreateString("0x0200000"));     
-	cJSON_AddItemToObject(cs, "msg", cJSON_CreateString("operation are Successfully Performed")); 
-	payload = cJSON_PrintUnformatted(cs);
-	if(payload)	cJSON_Delete(cs);
-	init_tx_message(0x83,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
-	send_message(&Txto4004);
-}
-
-void error_recepit(void)
-{
-	/*
-	u8 *send_buf,*temp_send_buf;
-	u16 send_payload_len;
-	char *send_payload_buf;
-	cJSON *root;
-	root=cJSON_CreateObject();       
-	cJSON_AddItemToObject(root, "code", cJSON_CreateString("0x0401F08"));     
-	cJSON_AddItemToObject(root, "msg", cJSON_CreateString("Unauthorized Seraph Sense")); 
-	send_payload_buf =cJSON_PrintUnformatted(root);
-	cJSON_Delete(root); 
-	send_payload_len = strlen(send_payload_buf);
-	mymemcpy(Txto4004.tx_payload,send_payload_buf,send_payload_len);
-	temp_send_buf = send_buf = mymalloc(send_payload_len+5);
-	*send_buf++ = Txto4004.tx_fix_header.ch.first_ch_byte = 0x85;
-	*send_buf++ = (3 + send_payload_len);
-	*send_buf++	= Txto4004.tx_var_header.version = 0x01;
-	*send_buf++	= Txto4004.tx_var_header.message_id_H = Rxfr4004.rx_var_header.message_id_H;
-	*send_buf++	= Txto4004.tx_var_header.message_id_L = Rxfr4004.rx_var_header.message_id_L;
-	mystrncat(send_buf,Txto4004.tx_payload,send_payload_len);
-	//Usart1_Send(temp_send_buf,(5 + send_payload_len));
-	//while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
-	addNodeToUartTxSLLast(temp_send_buf,(5 + send_payload_len));
-	mymemset(Txto4004.tx_payload,0,send_payload_len);
-	//free(send_payload_buf);
-	//myfree(send_buf);
-	*/
-	cJSON *cs;
-	char *payload;
-	char *topic = "";
-	cs = cJSON_CreateObject();
-	cJSON_AddItemToObject(cs, "code", cJSON_CreateString("0x0200000"));     
-	cJSON_AddItemToObject(cs, "msg", cJSON_CreateString("operation are Successfully Performed")); 
-	payload = cJSON_PrintUnformatted(cs);
-	if(payload)	cJSON_Delete(cs);
-	init_tx_message(0x85,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
-	send_message(&Txto4004);
-}
-
-void calc_send_r_length(u8 *buf,Txmessage *tx)
-{
-	u32 padload_len;
-	padload_len = strlen(buf);
+	remainLen = tx->tx_payload_len;
+	
 	if(tx->tx_var_header.ext_message_id){
-		padload_len += 4;
+		
+		remainLen += 4;
+	}else{
+		remainLen += 3;
 	}
-	else{
-		padload_len += 3;
-	}
+	
 	if(tx->tx_var_header.topic_lengthL){
-		padload_len += strlen(tx->tx_var_header.topic) + 2;//2ÊÇtopic lengthµÄ³¤¶È
+//		remainLen += strlen(tx->tx_var_header.topic) + 2;	//2ÊÇtopic lengthµÄ³¤¶È
+		remainLen += tx->tx_var_header.topic_lengthL + 2;	//2ÊÇtopic lengthµÄ³¤¶È
 	}
-	if ((padload_len / 2097152) > 0)//ÓÐ4¸ö×Ö½Ú³¤µÄr_length
-	{	
+
+	if(remainLen < 128){					// 1×Ö½Ú
+	
+		tx->tx_fix_header.r_length_len = 1;
+		tx->tx_fix_header.r_length[0] = (u8)remainLen;
+
+	}else if(remainLen < 16384){			//ÓÐ2¸ö×Ö½ÚµÄr_length
+	
+		tx->tx_fix_header.r_length_len = 2;
+		tx->tx_fix_header.r_length[1] = (u8)(remainLen % 128) | 0x80;
+		tx->tx_fix_header.r_length[0] = (u8)(remainLen /128) ;
+
+	}else if(remainLen < 2097152){			//ÓÐ3¸ö×Ö½ÚµÄr_length
+	
+		tx->tx_fix_header.r_length_len = 3;
+		tx->tx_fix_header.r_length[2] = (u8)(remainLen % 16384);
+		remainLen -= tx->tx_fix_header.r_length[2];
+		tx->tx_fix_header.r_length[1] = (u8)(remainLen % 128);
+		remainLen -= tx->tx_fix_header.r_length[1];
+		tx->tx_fix_header.r_length[0] = (u8)(remainLen % 128);
+
+		tx->tx_fix_header.r_length[2] |= 0x80;
+		tx->tx_fix_header.r_length[1] |= 0x80;
+
+	}else{							//ÓÐ4¸ö×Ö½Ú³¤µÄr_length
+
 		tx->tx_fix_header.r_length_len = 4;
-		tx->tx_fix_header.r_length[3] = (u8)(padload_len % 2097152);
-		padload_len -= tx->tx_fix_header.r_length[3];
-		tx->tx_fix_header.r_length[2] = (u8)(padload_len % 128);
-		padload_len -= tx->tx_fix_header.r_length[2];
-		tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
-		padload_len -= tx->tx_fix_header.r_length[1];
-		tx->tx_fix_header.r_length[0] = (u8)(padload_len % 128);
+		tx->tx_fix_header.r_length[3] = (u8)(remainLen % 2097152);
+		remainLen -= tx->tx_fix_header.r_length[3];
+		tx->tx_fix_header.r_length[2] = (u8)(remainLen % 128);
+		remainLen -= tx->tx_fix_header.r_length[2];
+		tx->tx_fix_header.r_length[1] = (u8)(remainLen % 128);
+		remainLen -= tx->tx_fix_header.r_length[1];
+		tx->tx_fix_header.r_length[0] = (u8)(remainLen % 128);
+		
 		tx->tx_fix_header.r_length[3] |= 0x80;
 		tx->tx_fix_header.r_length[2] |= 0x80;
 		tx->tx_fix_header.r_length[1] |= 0x80;
-		/*
-		tx->tx_fix_header.r_length[3] = (u8)(padload_len / 2097126) | 0x80;
-		padload_len = padload_len % 2097126;
-		if((padload_len / 16384) > 0)
-		{
-			tx->tx_fix_header.r_length[2] = (u8)(padload_len / 16384);
-			padload_len = padload_len % 16384;
-			if ((padload_len / 128) > 0)
-			{
-				tx->tx_fix_header.r_length[1] = (u8)(padload_len / 128);
-				padload_len = (padload_len % 128);
-				
-				tx->tx_fix_header.r_length[0] = (u8)padload_len;
-			}
-		}*/
+
 	}
-	else if((padload_len / 16384) > 0)//ÓÐ3¸ö×Ö½ÚµÄr_length
-	{
-			tx->tx_fix_header.r_length_len = 3;
-			tx->tx_fix_header.r_length[2] = (u8)(padload_len % 16384);
-			padload_len -= tx->tx_fix_header.r_length[2];
-			tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128);
-			padload_len -= tx->tx_fix_header.r_length[1];
-			tx->tx_fix_header.r_length[0] = (u8)(padload_len % 128);
-			tx->tx_fix_header.r_length[2] |= 0x80;
-			tx->tx_fix_header.r_length[1] |= 0x80;
+	
+}
+
+
+/*----------------------------------------------------------------------------
+	·¢ËÍTxto4004ÄÚÈÝ
+	 BB BB 83 05 01 21 44 7B 7D 0A 0A 
+-----------------------------------------------------------------------------*/
+void ssp_add_node_to_uart(Txmessage *tx)
+{
+	u8 *send_buf;
+	int txlen = 0;
+	char * temp_send_buf;
+	
+	temp_send_buf = (char *)mymalloc(1024);
+	if(temp_send_buf && tx){
 		
-			/*padload_len = padload_len / 128;
-			if ((padload_len / 128) > 0)
-			{
-				tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128) | 0x80;
-				padload_len = (padload_len / 128);
-				tx->tx_fix_header.r_length[2] = (u8)padload_len;
-			}*/
+		memset(temp_send_buf, 0, 1024);
+			
+		send_buf = (u8 *)temp_send_buf;
+		
+		*send_buf++ = 0xBB;
+		txlen++;
+		*send_buf++ = 0xBB;
+		txlen++;
+		
+		*send_buf++ = (tx->tx_fix_header.ch.first_ch_byte);
+		txlen++;
+		while(tx->tx_fix_header.r_length_len--){
+			*send_buf++ = tx->tx_fix_header.r_length[tx->tx_fix_header.r_length_len];
+			txlen++;
+		}
+		
+		*send_buf++ = tx->tx_var_header.version;
+		txlen++;
+		if(tx->tx_var_header.topic_lengthL){
+			*send_buf++ = tx->tx_var_header.topic_lengthH;
+			txlen++;
+			*send_buf++ = tx->tx_var_header.topic_lengthL;
+			txlen++;
+			mymemcpy(send_buf, tx->tx_var_header.topic, tx->tx_var_header.topic_lengthL);
+			txlen += tx->tx_var_header.topic_lengthL;
+			send_buf += tx->tx_var_header.topic_lengthL;
+		}
+		*send_buf++ = (u8)(tx->tx_var_header.msgid >> 8);
+		*send_buf++ = (u8)(tx->tx_var_header.msgid & 0xff);
+		txlen += 2; 
+		if(tx->tx_var_header.ext_message_id){
+			*send_buf++ = (tx->tx_var_header.ext_message_id);
+			txlen++;
+		}
+		
+		if(tx->tx_payload_len){
+			memcpy(send_buf, tx->tx_payload, tx->tx_payload_len);
+			txlen += tx->tx_payload_len;
+		}
+		
+		addNodeToUartTxSLLast(temp_send_buf, txlen);
+		myfree(temp_send_buf);
+
 	}
-	else if((padload_len / 128) > 0)//ÓÐ2¸ö×Ö½ÚµÄr_length
-	{
-		tx->tx_fix_header.r_length_len = 2;
-		tx->tx_fix_header.r_length[1] = (u8)(padload_len % 128) | 0x80;
-		padload_len = (u8)padload_len / 128;
-		tx->tx_fix_header.r_length[0] = (u8)padload_len ;
-	}
-	else
-	{
-		tx->tx_fix_header.r_length_len = 1;
-		tx->tx_fix_header.r_length[0] = (u8)padload_len;
-	}
+
 }
 
-//Çå³ýTxto4004Êý¾Ý
-void clear_tx_buf(void)
+
+/*----------------------------------------------------------------------------
+	//³õÊ¼»¯Txto4004
+-----------------------------------------------------------------------------*/
+void ssp_send_message(u8 firstByte, u8 ver, u8 topic_len, char *topic, u16 msgid, u8 ext_msgid, char *payload)
 {
-	int i;
-	Txto4004.tx_fix_header.ch.first_ch_byte = 0x00;
-	for(i = 0;i < 4;i++)	Txto4004.tx_fix_header.r_length[i] = 0x00;
-	Txto4004.tx_fix_header.r_length_len = 0x00;
-	Txto4004.tx_var_header.version = 0x00;
-	Txto4004.tx_var_header.topic_lengthH = 0x00;
-	Txto4004.tx_var_header.topic_lengthL = 0x00;
-	for(i = 0; i < 30; i++)	Txto4004.tx_var_header.topic[i] = 0x00;
-	Txto4004.tx_var_header.message_id_H = 0x00;
-	Txto4004.tx_var_header.message_id_L = 0x00;
-	Txto4004.tx_var_header.ext_message_id = 0x00;
-	for(i = 0; i < 1024;i++)	Txto4004.tx_payload[i] = 0x00;
-}
-//³õÊ¼»¯Txto4004
-void init_tx_message(u8 first_ch_byte,u8 version,u8 topic_len,char *topic,u8 message_id_H,u8 message_id_L,u8 ext_message_id,char *payload)
-{
-	clear_tx_buf();
-	Txto4004.tx_fix_header.ch.first_ch_byte = first_ch_byte;
-	Txto4004.tx_var_header.version = version;
-	Txto4004.tx_var_header.topic_lengthH = 0x00;
+	mymemset(&Txto4004, 0, sizeof(Txto4004));
+
+	Txto4004.tx_fix_header.ch.first_ch_byte = firstByte;
+	Txto4004.tx_var_header.version = ver;
+	Txto4004.tx_var_header.topic_lengthH = 0;
 	Txto4004.tx_var_header.topic_lengthL = topic_len;
-	if(topic_len)
-		{mymemcpy(Txto4004.tx_var_header.topic,topic,topic_len);myfree(topic);}
-	Txto4004.tx_var_header.message_id_H = message_id_H;
-	Txto4004.tx_var_header.message_id_L = message_id_L;
-	if(ext_message_id)
-		Txto4004.tx_var_header.ext_message_id = ext_message_id;
-	calc_send_r_length(payload,&Txto4004);
-	mymemcpy(Txto4004.tx_payload,payload,strlen(payload));myfree(payload);
-}
 
-//³õÊ¼»¯Txto4004Êý¾Ý£¬¸ù¾Ý_REPLY_ type×ö²»Í¬³õÊ¼»¯
-void init_send_Txmessage(_REPLY_ type)
-{
-	cJSON *cs;
-	char *payload;
-	char *topic = "";
-	switch(type)
-	{
-		case CONFIG_SS:
-			cs = cJSON_CreateObject();    
-			cJSON_AddItemToObject(cs, "code", cJSON_CreateString("0x0401F08"));     
-			cJSON_AddItemToObject(cs, "msg", cJSON_CreateString("Unauthorized Seraph Sense")); 
-			payload = cJSON_PrintUnformatted(cs);
-			if(payload)	cJSON_Delete(cs);
-			init_tx_message(0x83,0x01,0x00,topic,0x89,0x02,0x01,payload);
-			break;
-		default:
-			break;
+	if(topic_len){
+		mymemcpy(Txto4004.tx_var_header.topic, topic, topic_len);
 	}
-		send_message(&Txto4004);
-}
-//·¢ËÍTxto4004ÄÚÈÝ
-void send_message(Txmessage *tx)
-{
-	u8 *send_buf,*temp_send_buf;
-	u16 txlen = 0;
-	u16 payloadlen;
-	temp_send_buf = mymalloc(1024);
-	mymemset(temp_send_buf,0,1024);
-	send_buf = temp_send_buf;
-	temp_send_buf = send_buf;
-	*send_buf++ = 0xBB;
-	txlen++;
-	*send_buf++ = 0xBB;
-	txlen++;
-	*send_buf++ = (tx->tx_fix_header.ch.first_ch_byte);
-	txlen++;
-	while(tx->tx_fix_header.r_length_len--){
-		*send_buf++ = tx->tx_fix_header.r_length[tx->tx_fix_header.r_length_len];
-		txlen++;
+	
+	Txto4004.tx_var_header.msgid = msgid;
+
+
+	if(ext_msgid){
+		Txto4004.tx_var_header.ext_message_id = ext_msgid;
 	}
-	*send_buf++ = tx->tx_var_header.version;
-	txlen++;
-	if(tx->tx_var_header.topic_lengthL){
-		*send_buf++ = tx->tx_var_header.topic_lengthH;
-		txlen++;
-		*send_buf++ = tx->tx_var_header.topic_lengthL;
-		txlen++;
-		mymemcpy(send_buf,tx->tx_var_header.topic,tx->tx_var_header.topic_lengthL);
-		txlen += tx->tx_var_header.topic_lengthL;
-		send_buf += tx->tx_var_header.topic_lengthL;
+
+	Txto4004.tx_payload_len = payload ? strlen(payload) : 0;
+
+	ssp_calcu_remain_length(&Txto4004);
+
+	if(payload){
+		mymemcpy(Txto4004.tx_payload, payload, Txto4004.tx_payload_len);
 	}
-	*send_buf++ = (tx->tx_var_header.message_id_H);
-	*send_buf++ = (tx->tx_var_header.message_id_L);
-	txlen+=2;
-	if(tx->tx_var_header.ext_message_id){
-		*send_buf++ = (tx->tx_var_header.ext_message_id);
-		txlen++;
-	}
-	if(tx->tx_payload){
-		payloadlen = strlen(tx->tx_payload);
-		mymemcpy(send_buf,tx->tx_payload,payloadlen);
-		txlen+=payloadlen;
-		//myfree(tx->tx_payload);
-	}
-	//Usart1_Send(temp_send_buf,txlen);
-	//Usart1_Send(temp_send_buf,txlen);
-	//while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
-	//myfree(temp_send_buf);
-	addNodeToUartTxSLLast(temp_send_buf,txlen);
+
+	ssp_add_node_to_uart(&Txto4004);
+	
 }
 
 
-void send_message_without_payload(u8 fix1,u8 version,u8 message_id_h,u8 message_id_l,u8 ex_message_id)
-{
-	u8 send_buf[6];
-	u8 r_length;
-	if(ex_message_id)
-		r_length = 0x04;
-	else
-		r_length = 0x03;
-	send_buf[0] = fix1;
-	send_buf[1] = r_length;
-	send_buf[2] = version;
-	send_buf[3] = message_id_h;
-	send_buf[4] = message_id_l;
-	if(ex_message_id)
-	{	
-		send_buf[5] = ex_message_id;
-	}
-	//Usart1_Send(send_buf,(r_length + 2));
-	//while(!Usart1_Send_Done);	Usart1_Send_Done = 0;
-	addNodeToUartTxSLLast(send_buf,(r_length + 2));
-}
 
 
-//»Ø¸´ÐÄÌø°ü
-void rev_heart_beat(u8 fix1)
-{
-	u8 send_buf[2];
-	send_buf[0] = fix1;
-	send_buf[1] = 0x00;
-	//Usart1_Send(send_buf,2);
-	addNodeToUartTxSLLast(send_buf,2);
-}
+
 
 /**************************************ssÖ÷¶¯·¢ËÍ¸øeshº¯Êý**********************************************/
 //»ñÈ¡SSµÄÅäÖÃÐÅÏ¢£¬Ê²Ã´Ê±ºòÖ÷¶¯ÍÆËÍ£¿
 void send_config_ss(void)
 {
-	u8 temp_counter,gene_message_id_H,gene_message_id_L;
 	cJSON *cs,*sub_cs,*sub_cs2;
 	char *payload;
 	char *topic = "/config/ss";
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_H = random(temp_counter);
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_L = random(temp_counter);
+	
 	cs = cJSON_CreateObject();    
 	cJSON_AddItemToObject(cs, "system",sub_cs=cJSON_CreateObject());
 	cJSON_AddNumberToObject(sub_cs,"HPST",ss_cs.hpst);
@@ -2245,437 +1889,872 @@ void send_config_ss(void)
 	cJSON_AddStringToObject(sub_cs2,"sunrise",ss_cs.sunrise);
 	cJSON_AddStringToObject(sub_cs2,"sunset",ss_cs.sunset);
 	cJSON_AddItemToObject(sub_cs,"condition",sub_cs2=cJSON_CreateObject());
-	cJSON_AddStringToObject(sub_cs2,"code",ss_cs.code);
+	cJSON_AddStringToObject(sub_cs2, key_code,ss_cs.code);
 	cJSON_AddStringToObject(sub_cs2,"TP",ss_cs.tp);
 	cJSON_AddItemToObject(sub_cs,"airquality",sub_cs2=cJSON_CreateObject());
 	cJSON_AddStringToObject(sub_cs2,"index",ss_cs.index);
+
 	payload = cJSON_PrintUnformatted(cs);
-	if(payload)	cJSON_Delete(cs);
-	init_tx_message(0x83,0x01,0x0A,topic,gene_message_id_H,gene_message_id_L,0x01,payload);
-	send_message(&Txto4004);
+	if(payload){
+		ssp_send_message(0x83, 1, 10, topic, ssp_get_message_id(), 0, payload);
+		myfree(payload);
+	}	
+	cJSON_Delete(cs);
+	
 }
 
-//ÍÆËÍ´«¸ÐÆ÷Êý¾Ýst/sc/slc/slc¼°ss×ÔÉí´«¸ÐÆ÷
-//typeÎª0x43Ê±ÎªÖ÷¶¯ÍÆËÍ£¬typeÎª0x83Ê±ÊÇ±»¶¯ÍÆËÍ(½ÓÊÕµ½/data/sync)
-void send_data_sync(u8 type)
-{
-	u8 i;
-	u8 temp_counter,gene_message_id_H,gene_message_id_L;
-	cJSON *cs,*sub_cs;
-	char *payload;
-	char *topic;
-	if(type == 0x83) topic = "";
-	else if(type == 0x43) topic = "/data/sync";
-	temp_counter = (u8)TIM2->CNT;
+
+
+/*----------------------------------------------------------------------------
+	Ö÷¶¯ÉÏ±¨Éè±¸×´Ì¬
+-----------------------------------------------------------------------------*/
+void ssp_device_status_post(DEVICE_TYPE devType, u8 i)
+{	
+	u8 j;
+	cJSON *sub_cs, *root, *array;
+	char *payload = NULL;
+	char *topic = "/device/status";
 
 	
-	gene_message_id_H = random(temp_counter);
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_L = random(temp_counter);
-	cs = cJSON_CreateObject();    
-	cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-	cJSON_AddNumberToObject(sub_cs,"HM",(int)ss.sense.humidity);
-	cJSON_AddNumberToObject(sub_cs,"TP",(int)ss.sense.temperature);
-	cJSON_AddNumberToObject(sub_cs,"PT",((int)(ss.sense.pm2_5_H<<8) + (int)ss.sense.pm2_5_L));
-	cJSON_AddNumberToObject(sub_cs,"SM",(int)ss.sense.smoke);
-	cJSON_AddNumberToObject(sub_cs,"PR",(int)ss.sense.human_sensing);
-	cJSON_AddNumberToObject(sub_cs,"MI",(int)ss.sense.motion);
-	cJSON_AddNumberToObject(sub_cs,"BT",(int)ss.sense.bt);
-	cJSON_AddNumberToObject(sub_cs,"CO",((int)(ss.sense.CO_H<<8) + (int)ss.sense.CO_L));
-	cJSON_AddNumberToObject(sub_cs,"CD",((int)(ss.sense.CO2_H<<8) + (int)ss.sense.CO2_L));
-	cJSON_AddNumberToObject(sub_cs,"VO",(int)ss.sense.VOC);
-	for(i = 0; i < 5; i++){
-		if((!ss.sc[i].deviceid[0]) && (ss.sc[i].meshid)){//device idºÍmesh id¶¼²»Îª¿ÕÊ±²ÅÈÏÎªsc´æÔÚ£¬²¢ÍÆËÍÊý¾Ý
-			cJSON_AddItemToObject(cs, ss.sc[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"EG",(int)ss.sc[i].sense.total_energy_consum);
-			cJSON_AddNumberToObject(sub_cs,"CT",(int)ss.sc[i].sense.total_current);
-			cJSON_AddNumberToObject(sub_cs,"VG",(int)ss.sc[i].sense.voltage);
+	if(devType == DEVICE_SC){	
+			
+		if(ss.sc[i].meshid){	//Éè±¸´æÔÚ
+			
+			root = cJSON_CreateObject();		
+			if(root){
+
+				array = cJSON_CreateArray();
+				if(array){
+					for(j = 0; j < SL_NUMS_OF_SC; j++){
+						if(ss.sc[i].slc[j].MDID){		//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬
+							sub_cs = cJSON_CreateObject();
+							if(sub_cs){
+								cJSON_AddNumberToObject(sub_cs,  key_MDID, ss.sc[i].slc[j].MDID);
+								cJSON_AddNumberToObject(sub_cs,  key_type, 1);
+								cJSON_AddNumberToObject(sub_cs,  key_C1, ss.sc[i].slc[j].ch1_status);
+								cJSON_AddNumberToObject(sub_cs,  key_C2, ss.sc[i].slc[j].ch2_status);
+								cJSON_AddItemToArray(array, sub_cs);
+					
+							}					
+						}			
+					}
+					
+					for(j = 0; j < SP_NUMS_OF_SC; j++){
+						if(ss.sc[i].spc[j].MDID){		//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬				
+							sub_cs = cJSON_CreateObject();
+							if(sub_cs){
+								cJSON_AddNumberToObject(sub_cs, key_MDID, ss.sc[i].spc[j].MDID);
+								cJSON_AddNumberToObject(sub_cs, key_type, 2);
+								cJSON_AddNumberToObject(sub_cs, key_C1, ss.sc[i].spc[j].ch1_status);
+								cJSON_AddNumberToObject(sub_cs, key_C2, ss.sc[i].spc[j].ch2_status);
+								cJSON_AddNumberToObject(sub_cs, key_C3, ss.sc[i].spc[j].ch3_status);
+								cJSON_AddItemToArray(array, sub_cs);							
+							}					
+						}
+					}						
+					cJSON_AddItemToObject(root, ss.sc[i].deviceid, array);
+					
+				}
+					
+			}
+			
 		}
+		
 	}
-	for(i = 0; i < 20; i++){
-		if((!ss.st[i].deviceid[0]) && (ss.st[i].meshid)){//device idºÍmesh id¶¼²»Îª¿ÕÊ±²ÅÈÏÎªst´æÔÚ£¬²¢ÍÆËÍÊý¾Ý
-			cJSON_AddItemToObject(cs, ss.sc[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"CS",((int)(ss.st[i].sense.color_sense_H<<16) + (int)(ss.st[i].sense.color_sense_M<<8) + (int)ss.st[i].sense.color_sense_L));
-			cJSON_AddNumberToObject(sub_cs,"AL",(int)ss.st[i].sense.ambient_light);
-		}
+		
+	if(root){
+		payload = cJSON_PrintUnformatted(root);
+		if(payload){
+			ssp_send_message(0x43, 1, 14, topic, ssp_get_message_id(), 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(root);
 	}
-	if(payload)	cJSON_Delete(cs);
-	if(type == 0x83)	init_tx_message(0x83,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
-	else if(type == 0x43)	init_tx_message(0x43,0x01,0x0A,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-	send_message(&Txto4004);
+		
 }
-//ÍÆËÍ´«¸ÐÆ÷Êý¾Ýst/sc/slc/slc¼°ssÖÐÄ³Ò»¸ö´«¸ÐÆ÷
-void send_deepin_data_sync(void)
+
+
+
+/*----------------------------------------------------------------------------
+	Ö»Ö§³Ö»ñÈ¡Ä³ SS ÏÂËùÓÐ SEP (SL ºÍ SP)/ »ñÈ¡Ä³ SS ÏÂÄ³Ò»¸ö SEP
+-----------------------------------------------------------------------------*/
+void ssp_device_status_response(u8 *buf)	//bufÊÇtopicÄÚÈÝ
 {
-	u8 i;
-	cJSON *cs,*sub_cs;
+	u8 i, j, len;
+	cJSON *cs,*sub_cs, *array;
 	char *payload;
 	char *topic = "";
-	cs = cJSON_CreateObject();
-	if((ss_ds.ch[0] == 'H') && (ss_ds.ch[0] == 'M')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"HM",(int)ss.sense.humidity);
-	}
-	else if((ss_ds.ch[0] == 'T') && (ss_ds.ch[0] == 'P')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"TP",(int)ss.sense.temperature);
-	}
-	else if((ss_ds.ch[0] == 'P') && (ss_ds.ch[0] == 'T')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"PT",((int)(ss.sense.pm2_5_H<<8) + (int)ss.sense.pm2_5_L));
-	}
-	else if((ss_ds.ch[0] == 'S') && (ss_ds.ch[0] == 'M')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"SM",(int)ss.sense.smoke);
-	}
-	else if((ss_ds.ch[0] == 'P') && (ss_ds.ch[0] == 'R')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"PR",(int)ss.sense.human_sensing);
-	}
-	else if((ss_ds.ch[0] == 'M') && (ss_ds.ch[0] == 'I')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"MI",(int)ss.sense.motion);
-	}
-	else if((ss_ds.ch[0] == 'B') && (ss_ds.ch[0] == 'T')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"BT",(int)ss.sense.bt);
-	}
-	else if((ss_ds.ch[0] == 'C') && (ss_ds.ch[0] == 'O')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"CO",((int)(ss.sense.CO_H<<8) + (int)ss.sense.CO_L));
-	}
-	else if((ss_ds.ch[0] == 'C') && (ss_ds.ch[0] == 'D')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"CD",((int)(ss.sense.CO2_H<<8) + (int)ss.sense.CO2_L));
-	}
-	else if((ss_ds.ch[0] == 'V') && (ss_ds.ch[0] == 'O')){
-		cJSON_AddItemToObject(cs, ss.deviceid,sub_cs=cJSON_CreateObject());
-		cJSON_AddNumberToObject(sub_cs,"VO",(int)ss.sense.VOC);
-	}
-	else if((ss_ds.ch[0] == 'E') && (ss_ds.ch[0] == 'G')){
-		for(i = 0; i < 5;i++){
-			cJSON_AddItemToObject(cs, ss.sc[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"EG",(int)ss.sc[i].sense.total_energy_consum);
+	
+	len = strlen((char *)buf);
+	cs = NULL;
+	
+	/* SS ÏÂËùÓÐ SEP (SL ºÍ SP) */
+	if(len == 14){
+		
+		cs = cJSON_CreateObject();		
+		if(cs){
+			for(i = 0; i < SC_NUMS_OF_SS; i++){	
+				if(ss.sc[i].meshid){
+					array = cJSON_CreateArray();
+					if(array){
+						for(j = 0; j < SL_NUMS_OF_SC; j++){
+							if(ss.sc[i].slc[j].MDID){ 		//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬
+								sub_cs = cJSON_CreateObject();
+								if(sub_cs){
+									cJSON_AddNumberToObject(sub_cs,  key_MDID, ss.sc[i].slc[j].MDID);
+									cJSON_AddNumberToObject(sub_cs,  key_type, 1);
+									cJSON_AddNumberToObject(sub_cs,  key_C1, ss.sc[i].slc[j].ch1_status);
+									cJSON_AddNumberToObject(sub_cs,  key_C2, ss.sc[i].slc[j].ch2_status);
+									cJSON_AddItemToArray(array, sub_cs);
+						
+								}					
+							}			
+						}
+						
+						for(j = 0; j < SP_NUMS_OF_SC; j++){
+							if(ss.sc[i].spc[j].MDID){ 		//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬				
+								sub_cs = cJSON_CreateObject();
+								if(sub_cs){
+									cJSON_AddNumberToObject(sub_cs, key_MDID, ss.sc[i].spc[j].MDID);
+									cJSON_AddNumberToObject(sub_cs, key_type, 2);
+									cJSON_AddNumberToObject(sub_cs, key_C1, ss.sc[i].spc[j].ch1_status);
+									cJSON_AddNumberToObject(sub_cs, key_C2, ss.sc[i].spc[j].ch2_status);
+									cJSON_AddNumberToObject(sub_cs, key_C3, ss.sc[i].spc[j].ch3_status);
+									cJSON_AddItemToArray(array, sub_cs);							
+								}					
+							}
+						}						
+						cJSON_AddItemToObject(cs, ss.sc[i].deviceid, array);
+
+					}
+				}								
+			}			
 		}
+		
 	}
-	else if((ss_ds.ch[0] == 'C') && (ss_ds.ch[0] == 'T')){
-		for(i = 0; i < 5;i++){
-			cJSON_AddItemToObject(cs, ss.sc[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"CT",(int)ss.sc[i].sense.total_current);
-		}
+
+	/* SS ÏÂÄ³Ò»¸ö SEP */
+	
+	if(cs){
+		payload = cJSON_PrintUnformatted(cs);
+		if(payload){
+			ssp_send_message(0x83, 1, 0, topic, Rxfr4004.rx_var_header.msgid, 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(cs);
 	}
-	else if((ss_ds.ch[0] == 'V') && (ss_ds.ch[0] == 'G')){
-		for(i = 0; i < 5;i++){
-			cJSON_AddItemToObject(cs, ss.sc[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"VG",(int)ss.sc[i].sense.voltage);
-		}
-	}
-	else if((ss_ds.ch[0] == 'C') && (ss_ds.ch[0] == 'S')){
-		for(i = 0; i < 20;i++){
-			cJSON_AddItemToObject(cs, ss.st[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"CS",((int)(ss.st[i].sense.color_sense_H<<16) + (int)(ss.st[i].sense.color_sense_M<<8) + (int)ss.st[i].sense.color_sense_L));
-		}
-	}
-	else if((ss_ds.ch[0] == 'A') && (ss_ds.ch[0] == 'L')){
-		for(i = 0; i < 20;i++){
-			cJSON_AddItemToObject(cs, ss.st[i].deviceid,sub_cs=cJSON_CreateObject());
-			cJSON_AddNumberToObject(sub_cs,"AL",(int)ss.st[i].sense.ambient_light);
-		}
-	}
-	if(payload)	cJSON_Delete(cs);
-	init_tx_message(0x83,0x01,0x00,topic,Rxfr4004.rx_var_header.message_id_H,Rxfr4004.rx_var_header.message_id_L,0x00,payload);
-	send_message(&Txto4004);
+	
 }
-//·¢ËÍSSµÄdevice info
-//1.ÉÏµç3sºóÖ÷¶¯·¢ËÍÒ»´Î
-//2.ÊÕµ½eshµÄdevice info ss°üÇëÇóÊ±
-void send_device_info_ss(u8 type,u8 message_id_H,u8 message_id_L)
+
+/*----------------------------------------------------------------------------
+	½âÎödevice_listÖ¸Áî
+-----------------------------------------------------------------------------*/
+void ssp_devList_update(void)
+{
+	int i;
+	cJSON *tmp, *onejson;
+	
+	if(devList.flag == 1){
+
+		/* ¸üÐÂdevListµÄÆäËûÐÅÏ¢ */
+		devList.scSize = 0;
+		devList.stSize = 0;
+		if(devList.sc){ devList.scSize = cJSON_GetArraySize(devList.sc);}	
+		if(devList.st){ devList.stSize = cJSON_GetArraySize(devList.st);}	
+		if(devList.scSize > SC_NUMS_OF_SS){ devList.scSize = SC_NUMS_OF_SS;}
+		if(devList.stSize > ST_NUMS_OF_SS){ devList.stSize = ST_NUMS_OF_SS;}
+
+		memset(devList.scDeviceID, 0, sizeof(devList.scDeviceID));
+		memset(devList.stDeviceID, 0, sizeof(devList.stDeviceID));
+		
+		for(i = 0; i < devList.scSize; i++){
+			onejson = cJSON_GetArrayItem(devList.sc, i);
+			if(onejson){
+				tmp = cJSON_GetObjectItem(onejson, key_deviceID);						
+				if(tmp && tmp->valuestring){
+					devList.scDeviceID[i][0] = string_tohex2(tmp->valuestring + 2);
+					devList.scDeviceID[i][1] = string_tohex2(tmp->valuestring + 4);
+					devList.scDeviceID[i][2] = string_tohex2(tmp->valuestring + 6);
+					devList.scDeviceID[i][3] = string_tohex2(tmp->valuestring + 8);					
+				}
+			}		
+		}
+
+		for(i = 0; i < devList.stSize; i++){
+			onejson = cJSON_GetArrayItem(devList.st, i);
+			if(onejson){
+				tmp = cJSON_GetObjectItem(onejson, key_deviceID);						
+				if(tmp && tmp->valuestring){
+					devList.stDeviceID[i][0] = string_tohex2(tmp->valuestring + 2);
+					devList.stDeviceID[i][1] = string_tohex2(tmp->valuestring + 4);
+					devList.stDeviceID[i][2] = string_tohex2(tmp->valuestring + 6);
+					devList.stDeviceID[i][3] = string_tohex2(tmp->valuestring + 8);					
+				}
+			}		
+		}
+
+	}
+
+}
+
+
+/*----------------------------------------------------------------------------
+	½âÎödevice_listÖ¸Áî
+-----------------------------------------------------------------------------*/
+void ssp_device_list_recv(u8 *payload)
+{
+	cJSON *root, *tmp, *devjson, *onejson, *newjson;
+	int i, devsize, ret = 0;
+	
+	root = cJSON_Parse((char*)payload);
+	if(root){
+		
+		devjson = NULL;		
+		tmp = cJSON_GetObjectItem(root, key_deviceID);
+		if(tmp && tmp->valuestring){
+			if(strcmp(ss.deviceid, tmp->valuestring) == 0){	//ÅäÖÃµÄIDÓë±¾SSµÄIDÏàÍ¬²Å½øÐÐÏÂÒ»²½
+				devjson = cJSON_GetObjectItem(root, "devices");
+			}
+		}
+				
+		if(devjson && (devjson->type == cJSON_Array)){
+
+			/* sl²»´æÔÚ£¬Ôò´´½¨slÁÐ±í */
+//			if(devList.sl){ 	cJSON_Delete(devList.sl);} 	devList.sl = cJSON_CreateArray();	
+//			if(devList.sp){ 	cJSON_Delete(devList.sp);}	devList.sp = cJSON_CreateArray();
+			if(devList.sc){ 	cJSON_Delete(devList.sc);}	devList.sc = cJSON_CreateArray();
+			if(devList.st){ 	cJSON_Delete(devList.st);}	devList.st = cJSON_CreateArray();
+			devList.flag = 0;
+			devsize = cJSON_GetArraySize(devjson);
+			if(devsize){
+				for(i = 0; i < devsize; i++){
+					onejson = cJSON_GetArrayItem(devjson, i);
+					if(onejson){
+						tmp = cJSON_GetObjectItem(onejson, key_deviceID);						
+						if(tmp && tmp->valuestring){
+//							if(*(tmp->valuestring + 1) == 'L'){
+//								ret = 1;								
+//								if(devList.sl){			/* È·±£sl´æÔÚ  */
+//									newjson = cJSON_CreateObject();
+//									cJSON_AddStringToObject(newjson, key_deviceID, tmp->valuestring);	
+//									cJSON_AddItemToArray(devList.sl, newjson);
+//									devList.flag = 1;
+//								}																								
+//							}
+//							
+//							if(*(tmp->valuestring + 1) == 'P'){
+//								ret = 1;
+//								if(devList.sp){		
+//									newjson = cJSON_CreateObject();
+//									cJSON_AddStringToObject(newjson, key_deviceID, tmp->valuestring);	
+//									cJSON_AddItemToArray(devList.sp, newjson);
+//									devList.flag = 1;
+//								}	
+//							}
+
+							if(*(tmp->valuestring + 1) == 'C'){
+								ret = 1;
+								if(devList.sc){			
+									newjson = cJSON_CreateObject();
+									cJSON_AddStringToObject(newjson, key_deviceID, tmp->valuestring);	
+									cJSON_AddItemToArray(devList.sc, newjson);
+									devList.flag = 1;
+								}	
+							}
+							
+							if(*(tmp->valuestring + 1) == 'T'){
+								ret = 1;
+								if(devList.st){			
+									newjson = cJSON_CreateObject();
+									cJSON_AddStringToObject(newjson, key_deviceID, tmp->valuestring);	
+									cJSON_AddItemToArray(devList.st, newjson);
+									devList.flag = 1;
+								}	
+							}						
+						}					
+					}				
+				}
+				
+			}
+			
+		}
+		
+		cJSON_Delete(root);
+		
+		if(ret == 1){
+			ssp_recepit_response(RECEIPT_CODE_SUCCESS);
+		}else{
+			ssp_recepit_response(RECEIPT_CODE_ERROR);
+		}
+
+		ssp_devList_update();
+		
+	}
+	
+}
+
+
+/*----------------------------------------------------------------------------
+	Ö÷¶¯ÉÏ±¨ i,Éè±¸ÐòÁÐ
+-----------------------------------------------------------------------------*/
+void ssp_device_info_sub_post(DEVICE_TYPE devType, u8 i)
+{
+	cJSON *dev, *root, *array;
+	int j;
+	char *payload = NULL;
+	char *topic = "/device/info/sub";
+
+	root = cJSON_CreateArray();	
+	if(root){
+		
+		if(devType == DEVICE_ST){
+			if(ss.st[i].meshid){	//Éè±¸´æÔÚ				
+				dev = cJSON_CreateObject(); 
+				if(dev){
+					cJSON_AddStringToObject(dev, key_deviceID, ss.st[i].deviceid);
+					cJSON_AddNumberToObject(dev, key_model, ss.st[i].model);
+					cJSON_AddNumberToObject(dev, key_firmware, ss.st[i].firmware);
+					cJSON_AddNumberToObject(dev, key_HWtest, ss.st[i].HWTtest);
+					cJSON_AddNumberToObject(dev, key_meshID, ss.st[i].meshid);
+					cJSON_AddItemToArray(root, dev);
+				}
+			}
+		}
+	
+		if(devType == DEVICE_SC){		
+			if(ss.sc[i].meshid){	//Éè±¸´æÔÚ				
+				dev = cJSON_CreateObject(); 
+				if(dev){
+					cJSON_AddStringToObject(dev, key_deviceID, ss.sc[i].deviceid);
+					cJSON_AddNumberToObject(dev, key_model, ss.sc[i].model);
+					cJSON_AddNumberToObject(dev, key_firmware, ss.sc[i].firmware);
+					cJSON_AddNumberToObject(dev, key_HWtest, ss.sc[i].HWTtest);
+					cJSON_AddNumberToObject(dev, key_meshID, ss.sc[i].meshid);
+					
+					array = cJSON_CreateArray();
+					if(array){
+						for(j = 0; j < SL_NUMS_OF_SC; j++){
+							if(ss.sc[i].slc[j].MDID){
+								cJSON_AddItemToArray(array, cJSON_CreateNumber(ss.sc[i].slc[j].MDID));
+							}
+						}
+						cJSON_AddItemToObject(dev, "SLC", array);						
+					}
+		
+					array = cJSON_CreateArray();
+					if(array){
+						for(j = 0; j < SP_NUMS_OF_SC; j++){
+							if(ss.sc[i].spc[j].MDID){
+								cJSON_AddItemToArray(array, cJSON_CreateNumber(ss.sc[i].spc[j].MDID));
+							}
+						}
+						cJSON_AddItemToObject(dev, "SPC", array);						
+					}					
+					cJSON_AddItemToArray(root, dev);
+					
+				}
+			}
+		}
+	
+		payload = cJSON_PrintUnformatted(root);
+		if(payload){
+			ssp_send_message(0x43, 1, 16, topic, ssp_get_message_id(), 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(root);
+
+	}
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	»Ø¸´ÇëÇó 
+-----------------------------------------------------------------------------*/
+void ssp_device_info_sub_response(u16 msgid)
+{
+	cJSON *array, *dev, *root;
+	int i, j;
+	char *payload = NULL;
+	char *topic = "";;
+
+	root = cJSON_CreateArray();
+	
+	if(root){
+
+		for(i = 0; i < ST_NUMS_OF_SS; i++){			
+			if(ss.st[i].meshid){	//Éè±¸´æÔÚ				
+				dev = cJSON_CreateObject(); 
+				if(dev){
+					cJSON_AddStringToObject(dev, key_deviceID, ss.st[i].deviceid);
+					cJSON_AddNumberToObject(dev, key_model, ss.st[i].model);
+					cJSON_AddNumberToObject(dev, key_firmware, ss.st[i].firmware);
+					cJSON_AddNumberToObject(dev, key_HWtest, ss.st[i].HWTtest);
+					cJSON_AddNumberToObject(dev, key_meshID, ss.st[i].meshid);
+					cJSON_AddItemToArray(root, dev);
+				}
+			}
+		}
+		
+		for(i = 0; i < SC_NUMS_OF_SS; i++){			
+			if(ss.sc[i].meshid){	//Éè±¸´æÔÚ				
+				dev = cJSON_CreateObject(); 
+				if(dev){
+					cJSON_AddStringToObject(dev, key_deviceID, ss.sc[i].deviceid);
+					cJSON_AddNumberToObject(dev, key_model, ss.sc[i].model);
+					cJSON_AddNumberToObject(dev, key_firmware, ss.sc[i].firmware);
+					cJSON_AddNumberToObject(dev, key_HWtest, ss.sc[i].HWTtest);
+					cJSON_AddNumberToObject(dev, key_meshID, ss.sc[i].meshid);
+					
+					array = cJSON_CreateArray();
+					if(array){
+						for(j = 0; j < SL_NUMS_OF_SC; j++){
+							if(ss.sc[i].slc[j].MDID){
+								cJSON_AddItemToArray(array, cJSON_CreateNumber(ss.sc[i].slc[j].MDID));
+							}
+						}
+						cJSON_AddItemToObject(dev, "SLC", array);						
+					}
+
+					array = cJSON_CreateArray();
+					if(array){
+						for(j = 0; j < SP_NUMS_OF_SC; j++){
+							if(ss.sc[i].spc[j].MDID){
+								cJSON_AddItemToArray(array, cJSON_CreateNumber(ss.sc[i].spc[j].MDID));
+							}
+						}
+						cJSON_AddItemToObject(dev, "SPC", array);						
+					}					
+					cJSON_AddItemToArray(root, dev);
+					
+				}
+			}
+		}
+
+		payload = cJSON_PrintUnformatted(root);
+		if(payload){
+			ssp_send_message(0x83, 1, 0, topic, msgid, 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(root);
+
+	}
+
+}
+
+
+/*----------------------------------------------------------------------------
+	device_info_ss
+	
+-----------------------------------------------------------------------------*/
+void ssp_device_info_ss(SSP_SEND_TYPE type, u16 msgid)
 {
 	cJSON *cs;
-	int i,j;
 	char *payload;
 	char *topic;
 	char topic1[] = "/device/info/ss";
 	char topic2[] = "";
-	if(type == 0x01) topic = topic1;
-	else						 topic = topic2;
-	//if(ready_ss_post)
-	//{
-		//ready_ss_post = 0;
-		cs = cJSON_CreateObject(); 
-		cJSON_AddStringToObject(cs,"deviceID",ss.deviceid);
-		cJSON_AddStringToObject(cs,"model",ss.model);
-		cJSON_AddStringToObject(cs,"firmware",ss.firmware);
-		cJSON_AddNumberToObject(cs,"HWtest",ss.HWTtest);
-		cJSON_AddNumberToObject(cs,"meshID",ss.meshid);
-		cJSON_AddStringToObject(cs,"macWiFi",ss.macwifi);
+	
+	if(type == SSP_POST) topic = topic1;
+	else			  	topic = topic2;
+
+	cs = cJSON_CreateObject(); 
+	if(cs){
+		
+		cJSON_AddStringToObject(cs, key_deviceID, ss.deviceid);
+		cJSON_AddNumberToObject(cs, key_model, ss.model);
+		cJSON_AddNumberToObject(cs, key_firmware, ss.firmware);
+		cJSON_AddNumberToObject(cs, key_HWtest, ss.HWTtest.byte);
+		cJSON_AddNumberToObject(cs, key_meshID, ss.meshid);
+		cJSON_AddStringToObject(cs, key_macWiFi, ss.macwifi);
+		
+		/* test */
+//		cJSON_AddNumberToObject(cs, key_macWiFi,sizeof(devList.scDeviceID));
+	
 		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		if(type == 0x01)	init_tx_message(0x43,0x01,0x0F,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
-		else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	//}
+		if(payload){
+			if(type == SSP_POST)	ssp_send_message(0x43, 1, 15, topic, ssp_get_message_id(), 0, payload);
+			else				ssp_send_message(0x83, 1, 0, topic, msgid, 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(cs);
+
+	}
+
 }
 
-
-//ÉÏµçÊÕµ½ST/SC/SLC/SPCºó×ª·¢¸øeSH£¬ÉÏµçÍÆËÍ×ÔÉíÊý¾Ý
-//uart2½ÓÊÕµ½ST/SC/SLC/SPC×ÔÉíÊý¾Ýºó£¬´æ´¢ÔÚss.sc[]/ss.st[]/ss.slc[]/ss.spcÖÐ
-void send_device_info_sub(u8 type,u8 message_id_H,u8 message_id_L)
+/*----------------------------------------------------------------------------
+	Ó¦´ðeshµÄ¹ÊÕÏ²éÑ¯
+	·¢ËÍËµÓÐÉè±¸µÄ¹ÊÕÏÐÅÏ¢£¬°üÀ¨Ã»ÓÐ¹ÊÕÏµÄÉè±¸
+-----------------------------------------------------------------------------*/
+void ssp_device_malfunction_response(u16 msgid)
 {
-	u8 temp_counter,gene_message_id_H,gene_message_id_L;
-	cJSON *cs;
-	int i,j;
+	cJSON *cs, *root, *array;
 	char *payload;
-	char *topic;
-	char topic1[] = "/device/info/sub";
-	char topic2[] = "";
-	if(type == 0x01) topic = topic1;
-	else						 topic = topic2;
-	
-	if(ready_st_post){
-		ready_st_post = 0;
-		for(i = 0;i < 20;i++){
-			if((!ss.st[i].posted) && (ss.st[i].deviceid[0]) && (ready_st_post_meshid == ss.st[i].meshid)){//»¹Ã»ÓÐ±»ÍÆËÍ¹ýÇÒss.st[i].deviceid[]ÒÑ¾­ÓÐÊý¾Ý
-				ss.st[i].posted = 1;
-				cs = cJSON_CreateObject(); 
-				cJSON_AddStringToObject(cs,"deviceID",ss.st[i].deviceid);
-				cJSON_AddStringToObject(cs,"model",ss.st[i].model);
-				cJSON_AddStringToObject(cs,"firmware",ss.st[i].firmware);
-				cJSON_AddNumberToObject(cs,"HWtest",ss.st[i].HWTtest);
-				cJSON_AddNumberToObject(cs,"meshID",ss.st[i].meshid);
-				cJSON_AddStringToObject(cs,"macWiFi",ss.st[i].macwifi);
-				payload = cJSON_PrintUnformatted(cs);
-				if(payload)	cJSON_Delete(cs);
-				if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
-				else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
-				send_message(&Txto4004);
+	char *topic = "";
+	u8 i, j, scCount;
+
+	root = cJSON_CreateObject();	
+	if(root){		
+//		if(ss.HWTtest.byte){							/* ss */
+			cs = cJSON_CreateObject(); 
+			if(cs){
+				cJSON_AddNumberToObject(cs, key_fw, ss.firmware);
+				cJSON_AddNumberToObject(cs, key_sts, ss.HWTtest.byte);
+				cJSON_AddItemToObject(root, ss.deviceid, cs);	
 			}
-		}
-	}
-	if(ready_sc_post)
-	{
-		ready_sc_post = 0;
-		for(i = 0;i < 5;i++){
-			if((!ss.sc[i].posted) && (ss.sc[i].deviceid[0]) &&(ready_sc_post_meshid == ss.sc[i].meshid)){//»¹Ã»ÓÐ±»ÍÆËÍ¹ýÇÒss.sc[i].deviceid[]ÒÑ¾­ÓÐÊý¾Ý
-				ss.sc[i].posted = 1;
+//		}
+
+		for(i = 0; i < ST_NUMS_OF_SS; i++){			/* st */
+
+//			if(ss.st[i].meshid && ss.st[i].HWTtest){		/* Éè±¸´æÔÚÇÒÓÐ¹ÊÕÏ  */
+			if(ss.st[i].meshid){		/* Éè±¸´æÔÚÇÒÓÐ¹ÊÕÏ  */
+
 				cs = cJSON_CreateObject(); 
-				cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].deviceid);
-				cJSON_AddStringToObject(cs,"model",ss.sc[i].model);
-				cJSON_AddStringToObject(cs,"firmware",ss.sc[i].firmware);
-				cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].HWTtest);
-				cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
-				cJSON_AddNumberToObject(cs,"Ndevice",ss.sc[i].Ndevice);
-				cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].macwifi);
-				payload = cJSON_PrintUnformatted(cs);
-				if(payload)	cJSON_Delete(cs);
-				if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
-				else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
-				send_message(&Txto4004);
-			}
-		}
-	}
-	
-	if(ready_slc_post)
-	{
-		ready_slc_post = 0;
-		for(i = 0;i < 5;i++){
-			for(j = 0;j < 15;j++){
-				if((!ss.sc[i].slc[j].posted) && (ss.sc[i].slc[j].deviceid[0]) && (ready_slc_post_mdid == ss.sc[i].slc[j].MDID)){//»¹Ã»ÓÐ±»ÍÆËÍ¹ýÇÒss.slc[i].deviceid[]ÒÑ¾­ÓÐÊý¾Ý
-					ss.sc[i].slc[j].posted = 1;
-					cs = cJSON_CreateObject(); 
-					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].slc[j].deviceid);
-					cJSON_AddStringToObject(cs,"model",ss.sc[i].slc[j].model);
-					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].slc[j].firmware);
-					cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].slc[j].HWTtest);
-					cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
-					cJSON_AddNumberToObject(cs,"MDID",ss.sc[i].slc[j].MDID);
-					cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].slc[j].macwifi);
-					payload = cJSON_PrintUnformatted(cs);
-					if(payload)	cJSON_Delete(cs);
-					if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
-					else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
-					send_message(&Txto4004);
+				if(cs){
+					cJSON_AddNumberToObject(cs, key_fw, ss.st[i].firmware);
+					cJSON_AddNumberToObject(cs, key_sts, ss.st[i].HWTtest);
+					cJSON_AddItemToObject(root, ss.st[i].deviceid, cs);	
 				}
 			}
 		}
-	}
-	
-	if(ready_spc_post)
-	{
-		ready_spc_post = 0;
-		for(i = 0;i < 5;i++){
-			for(j = 0;j < 15;j++){
-				if((!ss.sc[i].spc[j].posted) && (ss.sc[i].spc[j].deviceid[0]) && (ready_spc_post_mdid == ss.sc[i].spc[j].MDID)){//»¹Ã»ÓÐ±»ÍÆËÍ¹ýÇÒss.spc[i].deviceid[]ÒÑ¾­ÓÐÊý¾Ý
-					ss.sc[i].spc[j].posted = 1;
-					cs = cJSON_CreateObject(); 
-					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].spc[j].deviceid);
-					cJSON_AddStringToObject(cs,"model",ss.sc[i].spc[j].model);
-					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].spc[j].firmware);
-					cJSON_AddNumberToObject(cs,"HWtest",ss.sc[i].spc[j].HWTtest);
-					cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
-					cJSON_AddNumberToObject(cs,"MDID",ss.sc[i].spc[j].MDID);
-					cJSON_AddStringToObject(cs,"macWiFi",ss.sc[i].spc[j].macwifi);
-					payload = cJSON_PrintUnformatted(cs);
-					if(payload)	cJSON_Delete(cs);
-					if(type == 0x01)	init_tx_message(0x43,0x01,0x10,topic,random((u8)TIM2->CNT),random((u8)TIM2->CNT),0x00,payload);
-					else							init_tx_message(0x83,0x01,0x00,topic,message_id_H,message_id_L,0x00,payload);
-					send_message(&Txto4004);
+		
+		for(i = 0; i < SC_NUMS_OF_SS; i++){			/* sc */
+
+			if(ss.sc[i].meshid){				/* Éè±¸´æÔÚ */
+
+				scCount = 0;
+				array = cJSON_CreateArray(); 
+				if(array){
+//					if(ss.sc[i].HWTtest){			/* sc */
+						cs = cJSON_CreateObject(); 
+						if(cs){
+							cJSON_AddNumberToObject(cs, key_MDID, 0);
+							cJSON_AddNumberToObject(cs, key_fw, ss.sc[i].firmware);
+							cJSON_AddNumberToObject(cs, key_sts, ss.sc[i].HWTtest);						
+							cJSON_AddItemToArray(array, cs);
+							scCount++;
+						}
+//					}
+					
+					for(j = 0; j < SL_NUMS_OF_SC; j++){ 		/* slc */
+//						if(ss.sc[i].slc[j].MDID && ss.sc[i].slc[j].HWTtest){
+						if(ss.sc[i].slc[j].MDID){
+
+							cs = cJSON_CreateObject(); 
+							if(cs){
+								cJSON_AddNumberToObject(cs, key_MDID, ss.sc[i].slc[j].MDID);
+								cJSON_AddNumberToObject(cs, key_sts, ss.sc[i].slc[j].HWTtest);						
+								cJSON_AddItemToArray(array, cs);
+								scCount++;
+							}
+						}
+					}
+
+					for(j = 0; j < SP_NUMS_OF_SC; j++){ 		/* slc */
+//						if(ss.sc[i].spc[j].MDID && ss.sc[i].spc[j].HWTtest){
+						if(ss.sc[i].spc[j].MDID){
+
+							cs = cJSON_CreateObject(); 
+							if(cs){
+								cJSON_AddNumberToObject(cs, key_MDID, ss.sc[i].spc[j].MDID);
+								cJSON_AddNumberToObject(cs, key_sts, ss.sc[i].spc[j].HWTtest);						
+								cJSON_AddItemToArray(array, cs);
+								scCount++;
+							}
+						}
+					}			
+
+					if(scCount == 0){		/* scÏÂÃæÉè±¸¶¼Ã»ÓÐ¹ÊÕÏ */
+						cJSON_Delete(array); 
+					}else{
+						cJSON_AddItemToObject(root, ss.sc[i].deviceid, array);					
+					}	
+					
 				}
+
 			}
+		
 		}
+					
+		payload = cJSON_PrintUnformatted(root);
+		if(payload){
+			ssp_send_message(0x83, 1, 0, topic, msgid, 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(root); 
+		
 	}
-	myfree(topic);
+
+
+
 }
 
-//SSÏòeSH±¨¸æST/SC/SLC/SPC¹ÊÕÏ£¬´Ëº¯Êý·Åµ½Task100msÖÐ
-void send_device_malfunction(void)
+/*----------------------------------------------------------------------------
+	//SSÏòeSH±¨¸æST/SC/SLC/SPC¹ÊÕÏ
+-----------------------------------------------------------------------------*/
+void ssp_device_malfunction_post(DEVICE_TYPE devType, u8 num, u8 mdid)
 {
-	u8 temp_counter,gene_message_id_H,gene_message_id_L;
-	cJSON *cs;
-	int i,j;
+	cJSON *cs, *root, *array;
 	char *payload;
 	char *topic = "/device/malfunction";
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_H = random(temp_counter);
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_L = random(temp_counter);
-	//SS»ã±¨×Ô¼ºµÄ¹ÊÕÏ
-	if(ss.HWTtest){
-		cs = cJSON_CreateObject(); 
-		cJSON_AddStringToObject(cs,"deviceID",ss.deviceid);
-		cJSON_AddStringToObject(cs,"firmware",ss.firmware);
-		cJSON_AddNumberToObject(cs,"HWTtest",ss.HWTtest);
-		cJSON_AddNumberToObject(cs,"meshID",ss.meshid);
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x43,0x01,0x13,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	}
-	//SS»ã±¨ST¹ÊÕÏ
-	if(rev_st_mal){
-		rev_st_mal = 0;
-		for(i = 0;i < 20;i++){
-			if(ss.st[i].HWTtest){
-				cJSON_AddStringToObject(cs,"deviceID",ss.st[i].deviceid);
-				cJSON_AddStringToObject(cs,"firmware",ss.st[i].firmware);
-				cJSON_AddNumberToObject(cs,"HWTtest",ss.st[i].HWTtest);
-				cJSON_AddNumberToObject(cs,"meshID",ss.st[i].meshid);
-				payload = cJSON_PrintUnformatted(cs);
-				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x43,0x01,0x13,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-				send_message(&Txto4004);
-				ss.st[i].HWTtest = 0;
-			}
-		}
-	}
-	//SS»ã±¨SC¹ÊÕÏ
-	if(rev_sc_mal){
-		rev_sc_mal = 0;
-		for(i = 0;i < 5;i++){
-			if(ss.sc[i].HWTtest){
-				cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].deviceid);
-				cJSON_AddStringToObject(cs,"firmware",ss.sc[i].firmware);
-				cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].HWTtest);
-				cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
-				payload = cJSON_PrintUnformatted(cs);
-				if(payload)	cJSON_Delete(cs);
-				init_tx_message(0x43,0x01,0x13,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-				send_message(&Txto4004);
-			}
-		}
-	}
-	//SS»ã±¨SLC¹ÊÕÏ
-	if(rev_slc_mal){
-		rev_slc_mal = 0;
-		for(i = 0;i < 5;i++){
-			for(j = 0;j < 15;j++){
-				if(ss.sc[i].slc[j].HWTtest){
-					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].slc[j].deviceid);
-					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].slc[j].firmware);
-					cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].slc[j].HWTtest);
-					cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
-					payload = cJSON_PrintUnformatted(cs);
-					if(payload)	cJSON_Delete(cs);
-					init_tx_message(0x43,0x01,0x13,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-					send_message(&Txto4004);
+	
+	root = cJSON_CreateObject(); 	
+	if(root){		
+
+		switch(devType){				
+			case DEVICE_SS:
+				cs = cJSON_CreateObject(); 
+				if(cs){
+					cJSON_AddNumberToObject(cs, key_fw, ss.firmware);
+					cJSON_AddNumberToObject(cs, key_sts, ss.HWTtest.byte);
+					cJSON_AddItemToObject(root, ss.deviceid, cs);	
+				}					
+				break;
+				
+			case DEVICE_SC:
+				array = cJSON_CreateArray(); 
+				if(array){
+					cs = cJSON_CreateObject(); 
+					if(cs){
+						cJSON_AddNumberToObject(cs, key_MDID, mdid);
+						cJSON_AddNumberToObject(cs, key_fw, ss.sc[num].firmware);
+						cJSON_AddNumberToObject(cs, key_sts, ss.sc[num].HWTtest);						
+						cJSON_AddItemToArray(array, cs);	
+					}					
+					cJSON_AddItemToObject(root, ss.sc[num].deviceid, array);					
+				}				
+				break;
+
+			case DEVICE_SL:
+				array = cJSON_CreateArray(); 
+				if(array){
+					cs = cJSON_CreateObject(); 
+					if(cs){
+						cJSON_AddNumberToObject(cs, key_MDID, mdid);
+						cJSON_AddNumberToObject(cs, key_sts, ss.sc[num].slc[mdid -1].HWTtest);
+						cJSON_AddItemToArray(array, cs);	
+					}					
+					cJSON_AddItemToObject(root, ss.sc[num].deviceid, array);					
 				}
-			}
+				break;				
+			
+			case DEVICE_SP:
+				array = cJSON_CreateArray(); 
+				if(array){
+					cs = cJSON_CreateObject(); 
+					if(cs){
+						cJSON_AddNumberToObject(cs, key_MDID, mdid);
+						cJSON_AddNumberToObject(cs, key_sts, ss.sc[num].spc[mdid -1].HWTtest);
+						cJSON_AddItemToArray(array, cs);	
+					}					
+					cJSON_AddItemToObject(root, ss.sc[num].deviceid, array);					
+				}	
+				break;
+				
+			case DEVICE_ST:
+				cs = cJSON_CreateObject(); 
+				if(cs){
+					cJSON_AddNumberToObject(cs, key_fw, ss.st[num].firmware);
+					cJSON_AddNumberToObject(cs, key_sts, ss.st[num].HWTtest);
+					cJSON_AddItemToObject(root, ss.st[num].deviceid, cs);	
+				}				
+				break;
+
+			default:
+				break;
+
 		}
+		
+		payload = cJSON_PrintUnformatted(root);
+		if(payload){
+			ssp_send_message(0x43, 1, 19, topic, ssp_get_message_id(), 0, payload);
+			myfree(payload);
+		}	
+		cJSON_Delete(root);	
+		
 	}
-	//SS»ã±¨SPC¹ÊÕÏ
-	if(rev_spc_mal){
-		rev_spc_mal = 0;
-		for(i = 0;i < 5;i++){
-			for(j = 0;j < 15;j++){
-				if(ss.sc[i].spc[j].HWTtest){
-					cJSON_AddStringToObject(cs,"deviceID",ss.sc[i].spc[j].deviceid);
-					cJSON_AddStringToObject(cs,"firmware",ss.sc[i].spc[j].firmware);
-					cJSON_AddNumberToObject(cs,"HWTtest",ss.sc[i].spc[j].HWTtest);
-					cJSON_AddNumberToObject(cs,"meshID",ss.sc[i].meshid);
-					payload = cJSON_PrintUnformatted(cs);
-					if(payload)	cJSON_Delete(cs);
-					init_tx_message(0x43,0x01,0x13,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-					send_message(&Txto4004);
-				}
-			}
-		}
-	}
+	
 }
+
+/*----------------------------------------------------------------------------
+	¼ì²âssµÄ¹ÊÕÏ²¢ÉÏ±¨
+	Ã¿Ò»ÃëÖÓ¼ì²âÒ»´Î
+-----------------------------------------------------------------------------*/
+void ssp_device_malfunction_detect_ss(void)
+{
+	static u8 time3minCnt = 0;
+	static u8 time5sCnt = 0;
+
+	time3minCnt++;
+	time5sCnt++;
+
+	/* sht30 */
+	if(sensors_value.sht3x.errCnt >= 3){			/* Á¬ÐøÈý´Î»òÒÔÉÏ¶ÁÈ¡´íÎó */
+		ss.HWTtest.bit.f_SHT30 = 1;
+	}else{
+		ss.HWTtest.bit.f_SHT30 = 0;
+	}
+
+	/* pm2.5 ¼ì²â·½·¨£¬1.Í¨Ñ¶ÖÜÆÚ²»Õý³£GP2Y1023_value.com_cnt < 75£¬2.Í¨Ñ¶²¨ÐÎ²»Õý³£
+	*/
+	if((GP2Y1023_value.com_cnt > 75) && (GP2Y1023_value.output_us > OUTPUT_AT_NO_DUST) && (GP2Y1023_value.output_us < OUTPUT_AT_MAX_DUST)){
+		ss.HWTtest.bit.f_PM25 = 0;
+	}else{		
+		ss.HWTtest.bit.f_PM25 = 1;
+	}
+	GP2Y1023_value.com_cnt = 0;
+
+
+
+	/* 1010 */
+	if(ss.flag.bit.ble_en == 0){				/* bleÎ´Á¬½ÓÍøÂç */	
+		ss.HWTtest.bit.f_ble = 1;
+	}else{
+		if(ss.malDetect.bit.f_ble_network_status == 1){
+			ss.HWTtest.bit.f_ble = 0;
+		}		
+	}
+
+	if(time5sCnt >= 5){						/* 5s */
+		time5sCnt = 0;
+
+		/* co */
+		if(sensors_value.co_recv_cnt > 0){			/* ÓÐÊý¾Ý½ÓÊÕ */
+			ss.HWTtest.bit.f_CO = 0;
+		}else{
+			ss.HWTtest.bit.f_CO = 1;
+		}
+		sensors_value.co_recv_cnt = 0;
+
+		/* co2 */
+		if(sensors_value.co2_recv_cnt > 0){			/* ÓÐÊý¾Ý½ÓÊÕ */
+			ss.HWTtest.bit.f_CO2 = 0;
+		}else{
+			ss.HWTtest.bit.f_CO2 = 1;
+		}
+		sensors_value.co2_recv_cnt = 0;
+
+
+	}
+
+	
+	if(time3minCnt >= 3 * 60){				/* 3min */
+		time3minCnt = 0;
+		
+		if(ss.malDetect.bit.f_ble_network_status == 0){	/* µ±Ç°3minÄÚÃ»ÓÐ½ÓÊÕµ½1010µÄÐÄÌ¬Ö¡ */	
+			ss.HWTtest.bit.f_ble = 1;
+		}
+		ss.malDetect.bit.f_ble_network_status = 0;
+	}
+
+
+}
+
+/*----------------------------------------------------------------------------
+	¼ì²âssµÄ¹ÊÕÏ²¢ÉÏ±¨
+	Ã¿Ò»ÃëÖÓ¼ì²âÒ»´Î
+-----------------------------------------------------------------------------*/
+void ssp_device_malfunction_detect(void)
+{
+	static u32 ss_HWTest = 0;
+	static u8 sc_HWTest[SC_NUMS_OF_SS] = {0};
+	static u8 st_HWTest[ST_NUMS_OF_SS] = {0};
+
+	static u8 i = 0;
+	static u8 j = 0;
+
+	ssp_device_malfunction_detect_ss();
+
+	if(ss.HWTtest.byte != ss_HWTest){					/* ss */
+		ss_HWTest = ss.HWTtest.byte;						/* ±£Ö¤¹ÊÕÏ²»»á±»ÖØ¸´·¢ËÍ */
+		ssp_device_malfunction_post(DEVICE_SS, 0, 0);
+		return;
+	}
+	
+	for( ; i < SC_NUMS_OF_SS; i++){				/* sc */
+		if(ss.sc[i].meshid){						
+			if(ss.sc[i].HWTtest != sc_HWTest[i]){
+				sc_HWTest[i] = ss.sc[i].HWTtest;		/* ±£Ö¤¹ÊÕÏ²»»á±»ÖØ¸´·¢ËÍ */
+				ssp_device_malfunction_post(DEVICE_SC, i, 0);
+				return;
+			}
+		}
+	}
+	
+	for( ; j < ST_NUMS_OF_SS; j++){				/* st */
+		if(ss.st[j].meshid){						
+			if(ss.st[j].HWTtest != st_HWTest[j]){
+				st_HWTest[j] = ss.st[j].HWTtest;		/* ±£Ö¤¹ÊÕÏ²»»á±»ÖØ¸´·¢ËÍ */
+				ssp_device_malfunction_post(DEVICE_ST, j, 0);
+				return;
+			}
+		}
+	}
+
+	/* ÖØ¸´Ñ­»· */ 
+	i = 0;
+	j = 0;
+
+}
+
+
+/*----------------------------------------------------------------------------
+	device_info_ss
+	
+-----------------------------------------------------------------------------*/
+void ssp_config_st_request(void)
+{
+
+	char *topic = "/config/st";
+	ssp_send_message(0x43, 1, (u8)strlen(topic), topic, ssp_get_message_id(), 0, NULL);
+	
+}
+
+
+
+
 //Real Time Reporting
 //SS×ª·¢ST·¢³ö¼ì²âµ½ÔË¶¯µÄÖ¸Áî
 void send_rt(void)
 {
-	u8 temp_counter,gene_message_id_H,gene_message_id_L;
 	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
 	char *payload;
 	char *topic = "/rt";
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_H = random(temp_counter);
-	temp_counter = (u8)TIM2->CNT;
-	gene_message_id_L = random(temp_counter);
+	
 	if(rev_st_rt){
 		rev_st_rt = 0;
 		cs = cJSON_CreateObject();
-		/*if((ss_rt.px.isPX)&&(ss_rt.eg.isEG)){
-			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateArray());
-			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
-			cJSON_AddStringToObject(sub_cs2,"type","PX");
-			cJSON_AddNumberToObject(sub_cs2,"value",ss_rt.px.value);
-			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
-			cJSON_AddNumberToObject(sub_cs2,"MD",ss_rt.eg.MD);
-			cJSON_AddStringToObject(sub_cs2,"type","EG");
-			cJSON_AddNumberToObject(sub_cs2,"value",ss_rt.eg.value);
-		}*/
+
 		if((ss_rt.px.isPX)&&(!ss_rt.eg.isEG)){
 			ss_rt.px.isPX = 0;
-			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid);
-			cJSON_AddStringToObject(sub_cs,"type","PX");
-			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.px.value);
+			cJSON_AddItemToObject(cs, key_report, sub_cs=cJSON_CreateObject());
+			cJSON_AddStringToObject(sub_cs, key_sepid,ss_rt.sepid);
+			cJSON_AddStringToObject(sub_cs, key_type,"PX");
+			cJSON_AddNumberToObject(sub_cs, key_value,ss_rt.px.value);
 		}
 		else if((!ss_rt.px.isPX)&&(ss_rt.eg.isEG)){
 			ss_rt.px.isPX = 0;
-			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid);
+			cJSON_AddItemToObject(cs, key_report,sub_cs=cJSON_CreateObject());
+			cJSON_AddStringToObject(sub_cs, key_sepid,ss_rt.sepid);
 			cJSON_AddNumberToObject(sub_cs,"MD",ss_rt.eg.MD);
-			cJSON_AddStringToObject(sub_cs,"type","EG");
-			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.eg.value);
+			cJSON_AddStringToObject(sub_cs, key_type, "EG");
+			cJSON_AddNumberToObject(sub_cs, key_value, ss_rt.eg.value);
 		}
 		
 		if(ss_rt.cp.isCP){
 			ss_rt.cp.isCP = 0;
-			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid2);
+			cJSON_AddItemToObject(cs, key_report,sub_cs=cJSON_CreateObject());
+			cJSON_AddStringToObject(sub_cs, key_sepid,ss_rt.sepid2);
 			cJSON_AddNumberToObject(sub_cs,"MD",ss_rt.MD);
-			cJSON_AddStringToObject(sub_cs,"type","CP");
-			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.gt.ch);
-			cJSON_AddItemToObject(cs, "action",sub_cs=cJSON_CreateArray());
+			cJSON_AddStringToObject(sub_cs, key_type,"CP");
+			cJSON_AddNumberToObject(sub_cs, key_value,ss_rt.gt.ch);
+			cJSON_AddItemToObject(cs, key_action,sub_cs=cJSON_CreateArray());
 			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
-			cJSON_AddNumberToObject(sub_cs2,"CH",ss_rt.gt.ch);
-			cJSON_AddStringToObject(sub_cs2,"action",ss_rt.gt.action);
+			cJSON_AddStringToObject(sub_cs2, key_sepid,ss_rt.sepid);
+			cJSON_AddNumberToObject(sub_cs2, key_CH,ss_rt.gt.ch);
+			cJSON_AddStringToObject(sub_cs2, key_action,ss_rt.gt.action);
 			cJSON_AddStringToObject(sub_cs2,"topos",ss_rt.gt.topos);
 			cJSON_AddItemToObject(sub_cs2,"option",sub_cs3 = cJSON_CreateObject());
 			cJSON_AddNumberToObject(sub_cs3,"duration",ss_rt.gt.option_duration);
@@ -2685,279 +2764,368 @@ void send_rt(void)
 		
 		if(ss_rt.gt.isGT){
 			ss_rt.gt.isGT = 0;
-			cJSON_AddItemToObject(cs, "report",sub_cs=cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs,"sepid",ss_rt.sepid2);
+			cJSON_AddItemToObject(cs, key_report,sub_cs=cJSON_CreateObject());
+			cJSON_AddStringToObject(sub_cs, key_sepid,ss_rt.sepid2);
 			cJSON_AddNumberToObject(sub_cs,"MD",ss_rt.MD);
-			cJSON_AddStringToObject(sub_cs,"type","GT");
-			cJSON_AddNumberToObject(sub_cs,"value",ss_rt.gt.ch);
-			cJSON_AddItemToObject(cs, "action",sub_cs=cJSON_CreateArray());
+			cJSON_AddStringToObject(sub_cs, key_type,"GT");
+			cJSON_AddNumberToObject(sub_cs, key_value,ss_rt.gt.ch);
+			cJSON_AddItemToObject(cs, key_action,sub_cs=cJSON_CreateArray());
 			cJSON_AddItemToArray(sub_cs,sub_cs2 = cJSON_CreateObject());
-			cJSON_AddStringToObject(sub_cs2,"sepid",ss_rt.sepid);
-			cJSON_AddNumberToObject(sub_cs2,"CH",ss_rt.gt.ch);
-			cJSON_AddStringToObject(sub_cs2,"action",ss_rt.gt.action);
+			cJSON_AddStringToObject(sub_cs2, key_sepid,ss_rt.sepid);
+			cJSON_AddNumberToObject(sub_cs2, key_CH,ss_rt.gt.ch);
+			cJSON_AddStringToObject(sub_cs2, key_action,ss_rt.gt.action);
 			cJSON_AddStringToObject(sub_cs2,"topos",ss_rt.gt.topos);
 			cJSON_AddItemToObject(sub_cs2,"option",sub_cs3 = cJSON_CreateObject());
 			cJSON_AddNumberToObject(sub_cs3,"duration",ss_rt.gt.option_duration);
 			cJSON_AddNumberToObject(sub_cs3,"erase",ss_rt.gt.option_erase);
 			cJSON_AddNumberToObject(sub_cs2,"timeout",ss_rt.gt.timeout);
 		}
+
 		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x43,0x01,0x03,topic,gene_message_id_H,gene_message_id_L,0x00,payload);
-		send_message(&Txto4004);
-		myfree(topic);
+		if(payload){
+			ssp_send_message(0x43,0x01,0x03,topic, ssp_get_message_id(), 0,payload);
+			myfree(payload);		
+		}	
+		cJSON_Delete(cs);
+
 	}
+
 }
 
-/***********************»Ø¸´º¯Êý**************************/
-//»Ø¸´action_perform£¬´Ëº¯Êý·Åµ½Task100ms
-void rev_action_perform(void)
+
+
+/*----------------------------------------------------------------------------
+	½ÓÊÕµ½scµÄµçÁ¿ÉÏ±¨Ö®ºó£¬Ö±½Ó¸øesh×ª·¢
+-----------------------------------------------------------------------------*/
+void ssp_energy_consum_post(u8 sc_num, u8 addr)
 {
-	u8 i,j,k,l;
-	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
+	cJSON *cs, *report;
+	char *payload = NULL;
+	char *topic = "/rt";
+
+	cs = cJSON_CreateObject();    
+	if(cs){
+		
+		report = cJSON_CreateObject();	
+		if(report){
+			cJSON_AddStringToObject(report, "SEPID", ss.sc[sc_num].deviceid);
+			cJSON_AddNumberToObject(report, key_MDID, addr + 1);
+			cJSON_AddStringToObject(report, key_type, "EG");	
+			cJSON_AddNumberToObject(report, key_value, ss.sc[sc_num].spc[addr].energy_consum);
+			cJSON_AddItemToObject(cs, key_report, report);
+		}
+				payload = cJSON_PrintUnformatted(cs);
+		if(payload){
+			ssp_send_message(0x43, 1, 3, topic, ssp_get_message_id(), 0, payload);	
+			myfree(payload);
+		}	
+		cJSON_Delete(cs);
+		
+	}
+
+}
+
+
+/*----------------------------------------------------------------------------
+	ÔË¶¯¼ì²âÊÇ·ñ·¢Éú±ä»¯
+	Ã¿Ò»ÃëÖÓ¼ì²âÒ»´Î
+-----------------------------------------------------------------------------*/
+void ssp_motion_detect_post(void)
+{
+	static u8 motion_tmp = 0;
+	
+	cJSON *cs, *report;
+	char *payload = NULL;
+	char *topic = "/rt";
+
+	if(motion_tmp != sensors_value.removeFlag){
+		motion_tmp = sensors_value.removeFlag;
+		
+		cs = cJSON_CreateObject();   
+		
+		if(cs){
+			
+			report = cJSON_CreateObject();	
+			if(report){
+				cJSON_AddStringToObject(report, "SEPID", ss.deviceid);
+				cJSON_AddStringToObject(report, key_type, "MI");	
+				cJSON_AddNumberToObject(report, key_value, motion_tmp);
+				cJSON_AddItemToObject(cs, key_report, report);
+			}			
+			payload = cJSON_PrintUnformatted(cs);
+			if(payload){
+				ssp_send_message(0x43, 1, 3, topic, ssp_get_message_id(), 0, payload);	
+				myfree(payload);
+			}
+			cJSON_Delete(cs);
+			
+		}
+		
+	}
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	ÑÌÎí¼ì²âÉÏ±¨
+-----------------------------------------------------------------------------*/
+void ssp_smoke_detect_post(u8 value)
+{	
+	cJSON *cs, *report;
+	char *payload = NULL;
+	char *topic = "/rt";
+		
+	cs = cJSON_CreateObject();   
+	
+	if(cs){
+		
+		report = cJSON_CreateObject();	
+		if(report){
+			cJSON_AddStringToObject(report, "SEPID", ss.deviceid);
+			cJSON_AddStringToObject(report, key_type, "SM");	
+			cJSON_AddNumberToObject(report, key_value, value);
+			cJSON_AddItemToObject(cs, key_report, report);
+		}			
+		payload = cJSON_PrintUnformatted(cs);
+		if(payload){
+			ssp_send_message(0x43, 1, 3, topic, ssp_get_message_id(), 0, payload);	
+			myfree(payload);
+		}
+		cJSON_Delete(cs);
+		
+	}
+
+}
+
+
+/*----------------------------------------------------------------------------
+	½ÓÊÕµ½stµÄÊÖÊÆÊ¶±ð»òÕß°´¼ü»ò»¬¶¯µÈ¼¶ÉÏ±¨ºó
+	Ïò ssÉÏ±¨ 
+-----------------------------------------------------------------------------*/
+void ssp_gesture_or_keypad_post(u8 st_num, REPORT_TYPE type, u8 keyPad, u16 value)
+{
+	cJSON *cs, *report;
+	char *payload = NULL;
+	char *topic = "/rt";
+	
+	cs = cJSON_CreateObject();    
+	if(cs){
+		
+		report = cJSON_CreateObject();	
+		if(report){
+			cJSON_AddStringToObject(report, "SEPID", ss.st[st_num].deviceid);
+			if(type == GESTURE_REPORT){		
+				cJSON_AddStringToObject(report, key_type, "GT");	
+				cJSON_AddNumberToObject(report, key_value, value);
+
+			}else if(type == KEYPAD_REPORT){
+				cJSON_AddStringToObject(report, key_type, "CP");	
+				cJSON_AddNumberToObject(report, key_value, value);
+				cJSON_AddNumberToObject(report, key_keyPad, keyPad);
+
+			}else if(type == SLIPPAD_REPORT){
+				cJSON_AddStringToObject(report, key_type, "CB");	
+				cJSON_AddNumberToObject(report, key_value, value);
+				cJSON_AddNumberToObject(report, key_keyPad, keyPad);
+
+			}else{
+
+			}
+			cJSON_AddItemToObject(cs, key_report, report);
+			
+		}
+		
+		payload = cJSON_PrintUnformatted(cs);
+		if(payload){
+			ssp_send_message(0x43, 1, 3, topic, ssp_get_message_id(), 0, payload);	
+			myfree(payload);
+		}	
+		cJSON_Delete(cs);
+		
+	}
+
+}
+
+/*----------------------------------------------------------------------------
+	sspÖÐrecepit»Ø¸´
+-----------------------------------------------------------------------------*/
+void ssp_recepit_response(int code)
+{
+	cJSON *cs;
 	char *payload;
 	char *topic = "";
-	if(rev_action_done){
-		rev_action_done = 0;
-		cs = cJSON_CreateObject();
-		cJSON_AddNumberToObject(cs,"seq",ss_ap.qos - 2);
-		cJSON_AddNumberToObject(cs,"success",rev_action_success_cnt);
-		rev_action_success_cnt = 0;
-		rev_action_fail_cnt = 0;
-		cJSON_AddItemToObject(cs, "result",sub_cs=cJSON_CreateArray());
-		cJSON_AddItemToObject(cs, "status",sub_cs2=cJSON_CreateObject());
-		for(i = 1;i < ss_ap.qos - 2;i++){
-			for(j = 0; j < 10;j++){
-				if(ss_ap.sl_ap[j].seqid == i){//ÕÒµ½seqidÎªiµÄss_apÏÂµÄsl_ap
-					for(k = 0; k < 5;k++){
-						for(l = 0;l < 15;l++){
-							//Ñ°ÕÒÓëss_ap.sl_ap[j].sepid¶ÔÓ¦µÄslc»òÕßspc
-							if(strncmp(ss.sc[k].slc[l].deviceid,ss_ap.sl_ap[j].sepid,8) == 0){
-								if(ss.sc[k].slc[l].status._flag_bit.bit1){//³É¹¦Ö´ÐÐÖ¸Áî
-									ss.sc[k].slc[l].status._flag_bit.bit1 = 0;
-									send_message_without_payload(0x86,0x01,ss_ap_message_id_H,ss_ap_message_id_L,i);
-									cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"seqid",i);
-									cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
-									cJSON_AddStringToObject(sub_cs3,"msg","success");
-									cJSON_AddItemToObject(sub_cs2,ss.sc[k].slc[l].deviceid,sub_cs3=cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[k].slc[l].ch1_status);
-									cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[k].slc[l].ch2_status);
-									cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[k].slc[l].ch3_status);
-									
-								}
-								else if	(ss.sc[k].slc[l].status._flag_bit.bit2){//Ö´ÐÐÊ§°Ü
-									ss.sc[k].slc[l].status._flag_bit.bit2 = 0;
-									send_message_without_payload(0x81,0x01,ss_ap_message_id_H,ss_ap_message_id_L,i);
-									cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"seqid",i);
-									cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
-									cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-									cJSON_AddItemToObject(sub_cs2,ss.sc[k].slc[l].deviceid,sub_cs3=cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[k].slc[l].ch1_status);
-									cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[k].slc[l].ch2_status);
-									cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[k].slc[l].ch3_status);
-								}
-								break;
+	u8	ret = 0x83;
+	
+	cs = cJSON_CreateObject();	
+	cJSON_AddNumberToObject(cs, key_code, code);
+
+	if(code == RECEIPT_CODE_SUCCESS){
+		cJSON_AddStringToObject(cs, key_msg, key_0x0200000);
+	}
+	
+	if(code == RECEIPT_CODE_ANALYZE_OK){
+		cJSON_AddStringToObject(cs, key_msg, key_0x0200001);
+		ret = 0x85;
+	}
+
+	if(code == RECEIPT_CODE_FAILED){
+		cJSON_AddStringToObject(cs, key_msg, key_0x0400000);
+		ret = 0x85;
+	}
+	if(code == RECEIPT_CODE_ANALYZE_ERROR){
+		cJSON_AddStringToObject(cs, key_msg, key_0x0400001);
+		ret = 0x85;
+	}
+
+	
+	if(code == RECEIPT_CODE_ERROR){
+		cJSON_AddStringToObject(cs, key_msg, key_0x0401F08);
+		ret = 0x85;
+	}
+
+	payload = cJSON_PrintUnformatted(cs);
+	if(payload){
+		ssp_send_message(ret, 1, 0, topic, Rxfr4004.rx_var_header.msgid, 0, payload);
+		myfree(payload);
+	}	
+	cJSON_Delete(cs);
+
+	
+}
+
+
+
+/*-------------------------------------------------------------------------
+    Ö÷¶¯·¢ËÍÊý¾Ý
+	struct{
+	        u8 ble_en:1;		//1010Á¬½ÓmeshÍøÂç£¬Õý³£¹¤×÷
+	        u8 tcp_en:1;		//4004½¨Á¢tcpÁ¬½Ó
+	        u8 post_devinfo_ss:1;
+	        u8 recv_devinfo_list:1;
+	        u8 recv_config_ss:1;
+		u8 sicp_broadcast_finish:1;
+	        u8 request_config_st:1;
+	        u8 recv_config_st:1;
+
+  	}bit; 
+-------------------------------------------------------------------------*/
+void ssp_send_data_active(void)
+{
+	
+	if(ss.flag.bit.post_devinfo_ss == 0){			//»¹Ã»·¢ËÍdevice info ss
+
+		if(ss.flag.bit.ble_en && ss.flag.bit.tcp_en){	//1010ºÍ4004¹¤×÷Õý³£
+
+			ssp_device_info_ss(SSP_POST, ssp_get_message_id()); 
+			ss.flag.bit.post_devinfo_ss = 1;
+		}
+	}
+
+
+
+	if(ss.flag.bit.request_config_st == 0 && ss.flag.bit.sicp_broadcast_finish == 1 ){	//»¹Ã»·¢ËÍ request_config_st
+
+		if(ss.flag.bit.ble_en && ss.flag.bit.tcp_en){	//1010ºÍ4004¹¤×÷Õý³£
+		
+			ss.flag.bit.request_config_st = 1;
+			ssp_config_st_request();
+			
+		}
+	}
+
+//if(ss.flag.bit.request_config_st == 0 ){	//»¹Ã»·¢ËÍ request_config_st
+//	
+//	ss.flag.bit.request_config_st = 1;
+//	ssp_config_st_request();
+
+//}
+
+}
+
+
+
+/*----------------------------------------------------------------------------
+	¼ì²éÉè±¸µÄºÏ·¨ÐÔ
+	ÔÝÖ»¼ì²ést scµÄºÏ·¨ÐÔ£¬scÏÂÃæµÄslc spcÓëscµÄºÏ·¨ÐÔÒ»ÖÂ
+-----------------------------------------------------------------------------*/
+void ssp_check_device_legality(void)
+{
+	int i, j, size;
+	cJSON *devjson, *tmp;
+//	char *test;
+
+	if(devList.flag){		/* Éè±¸ÁÐ±íÓÐÐ§ */
+		
+		if(devList.st){		/* stÁÐ±í´æÔÚ */			
+			size = devList.stSize;
+			if(size > 0){
+				for(i = 0; i < ST_NUMS_OF_SS; i++){
+					if(ss.st[i].meshid > 0){			/* Éè±¸´æÔÚ */
+						for(j = 0; j < size; j++){							
+							devjson = cJSON_GetArrayItem(devList.st, j);
+							if(devjson){
+								tmp = cJSON_GetObjectItem(devjson, key_deviceID);							
+								if(tmp && tmp->valuestring){
+									if(!strcmp(ss.st[i].deviceid, tmp->valuestring)){		/* ÏàÍ¬ */
+										ss.st[i].legalFlag = 1;										
+										break;									
+									}
+								}							
 							}
-							else if(strncmp(ss.sc[k].spc[l].deviceid,ss_ap.sl_ap[j].sepid,8) == 0){
-								if(ss.sc[k].spc[l].status._flag_bit.bit1){//³É¹¦Ö´ÐÐÖ¸Áî
-									ss.sc[k].spc[l].status._flag_bit.bit1 = 0;
-									send_message_without_payload(0x86,0x01,ss_ap_message_id_H,ss_ap_message_id_L,i);
-									cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"seqid",i);
-									cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
-									cJSON_AddStringToObject(sub_cs3,"msg","success");
-									cJSON_AddItemToObject(sub_cs2,ss.sc[k].spc[l].deviceid,sub_cs3=cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[k].slc[l].ch1_status);
-									cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[k].slc[l].ch2_status);
-									cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[k].slc[l].ch3_status);
-								}
-								else if	(ss.sc[k].spc[l].status._flag_bit.bit2){//Ö´ÐÐÊ§°Ü
-									ss.sc[k].spc[l].status._flag_bit.bit2 = 0;
-									send_message_without_payload(0x81,0x01,ss_ap_message_id_H,ss_ap_message_id_L,i);
-									cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"seqid",i);
-									cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
-									cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-									cJSON_AddItemToObject(sub_cs2,ss.sc[k].spc[l].deviceid,sub_cs3=cJSON_CreateObject());
-									cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[k].slc[l].ch1_status);
-									cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[k].slc[l].ch2_status);
-									cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[k].slc[l].ch3_status);
-								}
-								break;
+						}
+						if(j == size){				/* ÕÒ²»µ½ÏàÍ¬µÄÉè±¸ID£¬Éè±¸²»ºÏ·¨£¬Ìß³öÈ¥ */	
+							sicp_ble_ctrl_cmd(0x02, ss.st[i].meshid);
+							memset(&ss.st[i], 0, sizeof(ST));	
+						}
+					}											
+				}
+			}			
+		}
+
+		if(devList.sc){ 		/* scÁÐ±í´æÔÚ */	
+			size = devList.scSize;			
+			if(size > 0){
+				for(i = 0; i < SC_NUMS_OF_SS; i++){
+					if(ss.sc[i].meshid > 0){			/* Éè±¸´æÔÚ */
+						/* sc */
+						for(j = 0; j < size; j++){							
+							devjson = cJSON_GetArrayItem(devList.sc, j);
+							if(devjson){
+								tmp = cJSON_GetObjectItem(devjson, key_deviceID);							
+								if(tmp && tmp->valuestring){
+									if(!strcmp(ss.sc[i].deviceid, tmp->valuestring)){		/* ÏàÍ¬ */
+										ss.sc[i].legalFlag = 1; 									
+										break;									
+									}
+								}							
 							}
-						}					
-					}
+						}
+						if(j == size){				/* ÕÒ²»µ½ÏàÍ¬µÄÉè±¸ID£¬Éè±¸²»ºÏ·¨£¬Ìß³öÈ¥ */	
+							sicp_ble_ctrl_cmd(0x02, ss.sc[i].meshid);		/* Í¬Ê±½«scÏÂÃæµÄslc\spcÌß³öÈ¥ */	
+							memset(&ss.sc[i], 0, sizeof(SC));	
+						}						
+					}											
 				}
-				break;
 			}
+
+			/* test */
+//			test = cJSON_PrintUnformatted(devList.sc);
+//			if(test){				
+//				addNodeToUartTxSLLast(test, strlen(test));
+//			}
+			
 		}
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x83,0x01,0x00,topic,ss_ap_message_id_H,ss_ap_message_id_L,0x00,payload);
-		send_message(&Txto4004);
+
 	}
-	myfree(topic);
+
 }
 
 
 
 
-//»Ø¸´qeÖ´ÐÐ½á¹û£¬´Ëº¯Êý·Åµ½Task100ms
-void rev_qe(void)
-{
-	u8 i,j;
-	u8 double_break = 0;
-	cJSON *cs,*sub_cs,*sub_cs2,*sub_cs3;
-	char *payload;
-	char *topic = "";
-	int cnt = 0;
-	if(rev_action_done2){
-		rev_action_done2 = 0;
-		cs = cJSON_CreateObject();
-		cJSON_AddNumberToObject(cs,"seq",1);
-		cJSON_AddNumberToObject(cs,"success",rev_action_success_cnt);
-		rev_action_success_cnt = 0;
-		rev_action_fail_cnt = 0;
-		cJSON_AddItemToObject(cs, "result",sub_cs=cJSON_CreateArray());
-		cJSON_AddItemToObject(cs, "status",sub_cs2=cJSON_CreateObject());
-		//²éÑ¯STÊÇ·ñ½ÓÊÕµ½qe action»Ø¸´
-		for(i = 0; i < 20;i++){
-			if(ss.st[i].status._flag_bit.bit1){//STÊÕµ½qe action£¬ÇÒ»Ø¸´Ö´ÐÐ³É¹¦Ö¸Áî
-				ss.st[i].status._flag_bit.bit1 = 0;
-				cnt++;
-				cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
-				cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
-				cJSON_AddStringToObject(sub_cs3,"msg","success");
-				cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
-				//cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs3,"C1",ss.st[i].ch1_status);
-				cJSON_AddNumberToObject(sub_cs3,"C2",ss.st[i].ch2_status);
-				cJSON_AddNumberToObject(sub_cs3,"C3",ss.st[i].ch3_status);
-				cJSON_AddNumberToObject(sub_cs3,"C4",ss.st[i].ch4_status);
-				break;
-			}
-			else if(ss.st[i].status._flag_bit.bit2){
-				cnt++;
-				ss.st[i].status._flag_bit.bit2 = 0;
-				cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
-				cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
-				cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-				cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
-				//cJSON_AddItemToObject(sub_cs2,ss.st[i].deviceid,sub_cs3=cJSON_CreateObject());
-				cJSON_AddNumberToObject(sub_cs3,"C1",ss.st[i].ch1_status);
-				cJSON_AddNumberToObject(sub_cs3,"C2",ss.st[i].ch2_status);
-				cJSON_AddNumberToObject(sub_cs3,"C3",ss.st[i].ch3_status);
-				cJSON_AddNumberToObject(sub_cs3,"C4",ss.st[i].ch4_status);
-				break;
-			}
-		}
-		//²éÑ¯SCÊÇ·ñ½ÓÊÕµ½qe action»Ø¸´
-		for(i = 0;i < 5;i++){
-			for(j = 0; j < 15;j++){
-				if(ss.sc[i].slc[j].status._flag_bit.bit1){//SLCÊÕµ½qe action£¬ÇÒ»Ø¸´Ö´ÐÐ³É¹¦Ö¸Áî
-					
-					ss.sc[i].slc[j].status._flag_bit.bit1 = 0;
-					cnt++;
-					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
-					cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
-					cJSON_AddStringToObject(sub_cs3,"msg","success");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].slc[j].deviceid,sub_cs3=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].slc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].slc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].slc[j].ch3_status);
-					//double_break = 1;
-					//break;
-				}
-				else if(ss.sc[i].slc[j].status._flag_bit.bit2){
-					ss.sc[i].slc[j].status._flag_bit.bit2 = 0;
-					cnt++;
-					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
-					cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
-					cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].slc[j].deviceid,sub_cs3=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].slc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].slc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].slc[j].ch3_status);
-					double_break = 1;
-					//break;
-				}
-				if(ss.sc[i].spc[j].status._flag_bit.bit1){//SPCÊÕµ½qe action£¬ÇÒ»Ø¸´Ö´ÐÐ³É¹¦Ö¸Áî
-					ss.sc[i].spc[j].status._flag_bit.bit1 = 0;
-					cnt++;
-					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
-					cJSON_AddStringToObject(sub_cs3,"code","0x0200000");
-					cJSON_AddStringToObject(sub_cs3,"msg","success");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].spc[j].deviceid,sub_cs3=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].spc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].spc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].spc[j].ch3_status);
-					//double_break = 1;
-					//break;
-				}
-				else if(ss.sc[i].spc[j].status._flag_bit.bit2){
-					ss.sc[i].spc[j].status._flag_bit.bit2 = 0;
-					cnt++;
-					cJSON_AddItemToArray(sub_cs,sub_cs3 = cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"seqid",cnt);
-					cJSON_AddStringToObject(sub_cs3,"code","0x0408001");
-					cJSON_AddStringToObject(sub_cs3,"msg","Request Timeout");
-					cJSON_AddItemToObject(sub_cs2,ss.sc[i].spc[j].deviceid,sub_cs3=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs3,"C1",ss.sc[i].spc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs3,"C2",ss.sc[i].spc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs3,"C3",ss.sc[i].spc[j].ch3_status);
-					//double_break = 1;
-					//break;
-				}
-			}
-			//if(double_break)	{double_break = 0;break;}
-		}
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x83,0x01,0x00,topic,ss_qe_message_id_H,ss_qe_message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	}
-	myfree(topic);
-}
 
-//»Ø¸´device/statusÖ¸Áî£¬´Ëº¯Êý·ÅÔÚTask100msÖÐ
-void rev_device_status(void)
-{
-	u8 i,j;
-	cJSON *cs,*sub_cs;
-	char *payload;
-	char *topic = "";
-	if(ack_des){
-		ack_des = 0;
-		cs = cJSON_CreateObject();
-		for(i = 0;i < 5;i++){
-			for(j = 0;j < 15;j++){
-				if((!ss.sc[i].slc[j].deviceid[0]) && (ss.sc[i].slc[j].meshid)){//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬
-					cJSON_AddItemToObject(cs, ss.sc[i].slc[j].deviceid,sub_cs=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].slc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].slc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].slc[j].ch3_status);
-					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].slc[j].ch4_status);
-				}
-				if((!ss.sc[i].spc[j].deviceid[0]) && (ss.sc[i].spc[j].meshid)){//device idºÍmesh id²»Îª¿Õ²Å·¢ËÍ×´Ì¬
-					cJSON_AddItemToObject(cs, ss.sc[i].spc[j].deviceid,sub_cs=cJSON_CreateObject());
-					cJSON_AddNumberToObject(sub_cs,"C1",ss.sc[i].spc[j].ch1_status);
-					cJSON_AddNumberToObject(sub_cs,"C2",ss.sc[i].spc[j].ch2_status);
-					cJSON_AddNumberToObject(sub_cs,"C3",ss.sc[i].spc[j].ch3_status);
-					cJSON_AddNumberToObject(sub_cs,"C4",ss.sc[i].spc[j].ch4_status);
-				}
-			}
-		}
-		payload = cJSON_PrintUnformatted(cs);
-		if(payload)	cJSON_Delete(cs);
-		init_tx_message(0x83,0x01,0x00,topic,ss_des_message_id_H,ss_des_message_id_L,0x00,payload);
-		send_message(&Txto4004);
-	}
-}
+
+
+
 

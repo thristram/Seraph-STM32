@@ -54,6 +54,7 @@ void CO2_gpio_config(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //复用推挽输出
 	GPIO_Init(GPIOB, &GPIO_InitStructure); 		
 
+	
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
 	GPIO_Init(GPIOB, &GPIO_InitStructure);	
@@ -170,13 +171,14 @@ void CO2_usart3_cmd(uint8_t which)
 /*-----------------------------------------------------------------------
 	CO2发送命令
 	每100ms执行一次，不可随意修改周期
+	每一秒钟读取一次数值
 ------------------------------------------------------------------------*/
 void CO2_usart3_send(void)
 {
 	uint8_t which = 0;
 
 	CO2_uart.readCtrl++;
-	if(CO2_uart.readCtrl >= 10){	/* 1s */
+	if(CO2_uart.readCtrl >= 10){		/* 1s */
 		CO2_uart.readCtrl = 0;
 		CO2_uart.readFlag = 1;
 	}
@@ -300,18 +302,11 @@ void USART3_IRQHandler(void)
 		CO2_uart.rxLen++;
 		if(CO2_uart.rxLen >= CO2_TXRX_DATA_LEN){		/* 接收完成 */
 
-			if(CO2_uart.rxBuf[1] == 0x86){		/* 读取数据 */
+			if(CO2_uart.rxBuf[1] == 0x86){		/* 读取数据 */				
 				CO2_uart.readValue = CO2_uart.rxBuf[2] * 256 + CO2_uart.rxBuf[3];
 				sensors_value.co2_density = (int)CO2_uart.readValue;
-//				sensors_printf("\n CO2_uart.readValue:%d ppm", CO2_uart.readValue);
+				sensors_value.co2_recv_cnt++;
 			}
-
-
-//			sensors_printf("\n %02x %02x %02x %02x %02x %02x %02x %02x %02x ",
-//				CO2_uart.rxBuf[0], CO2_uart.rxBuf[1], CO2_uart.rxBuf[2], CO2_uart.rxBuf[3],
-//				CO2_uart.rxBuf[4], CO2_uart.rxBuf[5], CO2_uart.rxBuf[6], CO2_uart.rxBuf[7],
-//				CO2_uart.rxBuf[8]);
-
 		}
 		
 	}
@@ -335,11 +330,167 @@ void USART3_IRQHandler(void)
 
 
 
+/*-----------------------------------------------------------------------
+	1、配置时钟
+------------------------------------------------------------------------*/
+void CO_RCC_config(void)
+{
+
+  	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOC |RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO, ENABLE);
+  	RCC_APB1PeriphClockCmd(RCC_APB1Periph_UART5, ENABLE);
+
+}
+
+
+/*-----------------------------------------------------------------------
+	2、配置中断
+------------------------------------------------------------------------*/
+void CO_NVIC_config(void) 
+{ 
+	NVIC_InitTypeDef NVIC_InitStructure;
+ 
+	NVIC_InitStructure.NVIC_IRQChannel = UART5_IRQn;
+  	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 4 ;	//抢占优先级
+  	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 6;			//子优先级
+  	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;			//IRQ通道使能
+  	NVIC_Init(&NVIC_InitStructure);		//根据指定的参数初始化VIC寄存器
+
+}
+
+/*-----------------------------------------------------------------------
+	3、初始化引脚为
+------------------------------------------------------------------------*/
+void CO_gpio_config(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_12; 
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP; //复用推挽输出
+	GPIO_Init(GPIOC, &GPIO_InitStructure); 		
+
+	
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;	//浮空输入
+	GPIO_Init(GPIOD, &GPIO_InitStructure);	
+  
+}
+
+
+/*-----------------------------------------------------------------------
+	4、CO_uart5_config
+------------------------------------------------------------------------*/
+void CO_uart5_config(void)
+{
+  	USART_InitTypeDef USART_InitStructure;			//定义一个包含串口参数的结构体
+  
+  	USART_DeInit(UART5);  
+
+	USART_InitStructure.USART_BaudRate = 9600; 		//波特率9600
+  	USART_InitStructure.USART_WordLength = USART_WordLength_8b;	//8位数据位
+  	USART_InitStructure.USART_StopBits = USART_StopBits_1;		//1位停止位
+  	USART_InitStructure.USART_Parity = USART_Parity_No;			//无校验
+  	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;	//无硬件流控制
+  	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;	//输入加输出模式
+  	
+	USART_Init(UART5, &USART_InitStructure); //初始化串口
+	USART_ITConfig(UART5, USART_IT_RXNE, ENABLE);
+	USART_Cmd(UART5, ENABLE);    
+
+}
+
+
+/*-----------------------------------------------------------------------
+	CO初始化
+	主动上传式，每个1s发送一次浓度值
+	使用5s内检测是否有数据接收来判断接收故障
+------------------------------------------------------------------------*/
+void CO_init(void)
+{	
+	CO_RCC_config();
+	CO_NVIC_config();
+	CO_gpio_config();
+	CO_uart5_config();
+}
+
+
+
+/*-------------------------------------------------------------------------
+    
+-------------------------------------------------------------------------*/
+u8 FucCheckSum(u8 *i, u8 ln)
+{
+	u8 j, tempq = 0; 
+
+	i+=1;
+	
+	for(j = 0; j < (ln -2); j++){
+		
+		tempq += *i;
+		i++;
+	} 
+	tempq = (~tempq) + 1;
+	
+	return(tempq);
+
+}
 
 
 
 
+/*-----------------------------------------------------------------------
+	UART5_IRQHandler 中断服务程序 
+------------------------------------------------------------------------*/
+void UART5_IRQHandler(void)                
+{
+	static u8 co_recv_buf[12] = {0};
+	static u8 co_recv_len = 0;
+	u8 temp = 0;
+	
+	if(USART_GetITStatus(UART5, USART_IT_RXNE) != RESET){		 //接收中断
 
+		USART_ClearITPendingBit(UART5, USART_IT_RXNE);        	 //清除中断标志
+
+		temp = (u8)USART_ReceiveData(UART5);
+
+		co_recv_buf[co_recv_len] = temp;
+		co_recv_len++;
+		switch(co_recv_len)
+		{
+			case 1:
+				if (temp != 0xFF)	co_recv_len = 0; break;
+			case 2:
+				if (temp != 0x04) 	co_recv_len = 0; break;
+			case 3:
+				if (temp != 0x03) 	co_recv_len = 0; break;
+			default:
+				if (co_recv_len >= 12){		//防止接收错误后溢出
+					co_recv_len = 0;
+				}			
+				if(co_recv_len >= 9){			//接收数据完成
+
+					temp = FucCheckSum(co_recv_buf, 9);
+
+					if (temp == co_recv_buf[8]){	//校验正确	
+						sensors_value.co_ppm = co_recv_buf[4] * 256 + co_recv_buf[5];
+						sensors_value.co_range = co_recv_buf[6] * 256 + co_recv_buf[7];
+						sensors_value.co_recv_cnt++;
+					}
+					co_recv_len = 0;
+				}
+
+				break;
+			
+		}
+		
+	}
+
+
+	if(USART_GetITStatus(UART5, USART_IT_TXE) != RESET){		//发送中断(发送寄存器为空时)
+
+	}
+	
+} 
 
 
 

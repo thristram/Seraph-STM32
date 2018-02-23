@@ -15,9 +15,19 @@
 
 
 // port A, bit 1           
-#define PYD1798_OUT_LOW()  	(GPIOA->BRR = 0x00000002) 
-#define PYD1798_OUT_HIGH() 	(GPIOA->BSRR = 0x00000002) 
-#define PYD1798_IN_READ()  (GPIOA->IDR  & 0x0002)    
+#define PYD1798_OUT_LOW_1()  	(GPIOA->BRR = 0x00000002) 
+#define PYD1798_OUT_HIGH_1() 	(GPIOA->BSRR = 0x00000002) 
+#define PYD1798_IN_READ_1()  		(GPIOA->IDR  & 0x0002)    
+
+// port A, bit 6           
+#define PYD1798_OUT_LOW_2()  	(GPIOA->BRR = 0x00000040) 
+#define PYD1798_OUT_HIGH_2() 	(GPIOA->BSRR = 0x00000040) 
+#define PYD1798_IN_READ_2()  		(GPIOA->IDR  & 0x0040)    
+
+// port C, bit 10           
+//#define PYD1798_OUT_LOW_2()  	(GPIOC->BRR = 0x00000400) 
+//#define PYD1798_OUT_HIGH_2() 	(GPIOC->BSRR = 0x00000400) 
+//#define PYD1798_IN_READ_2()  		(GPIOC->IDR  & 0x0400)    
 
 
 #define smokeModule_IN_READ()  (GPIOA->IDR  & 0x0020) 
@@ -66,7 +76,7 @@ void PM25_gpio_config(void)
 
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4;         		/* PA4 */                                   
  	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;		//输出频率最大50MHz
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;			//带上拉电阻输出
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;			//带上拉电阻
 
 	GPIO_Init(GPIOA, &GPIO_InitStructure);
       
@@ -115,9 +125,9 @@ void PM25_NVIC_config(void)
 
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI4_IRQn; 		//使能外部中断所在的通道
 
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0x02; //抢占优先级 2， 
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2; //抢占优先级 2， 
 
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0x02; 	//子优先级 2
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3; 	//子优先级 2
 
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE; 	//使能外部中断通道 
 
@@ -166,12 +176,22 @@ void PM25_EXTI_init(void)
 ------------------------------------------------------------------------*/
 void PYD1798_gpio_init(void)
 {
-
+	/* PA1 */
 	RCC->APB2ENR |= 0x00000004;  // I/O port A clock enabled
-
 	GPIOA->CRL &= 0xFFFFFF0F;  // set output 
 	GPIOA->CRL |= 0x00000010;  // 
 
+	/* PA6 */
+	GPIOA->CRL &= 0xF0FFFFFF;  // set output 
+	GPIOA->CRL |= 0x01000000;  // 
+
+
+
+//	/* PC10 */
+//	RCC->APB2ENR |= 0x00000010;  // I/O port C clock enabled
+//	GPIOC->CRH &= 0xFFFFF0FF;  // set output 
+//	GPIOC->CRH |= 0x00000100;  // 
+
 }
 
 
@@ -180,9 +200,9 @@ void PYD1798_gpio_init(void)
 
 
 /*-----------------------------------------------------------------------
-	PYD1798
+	PYD1798  PA1
 ------------------------------------------------------------------------*/
-void PYD1798_pin_out(void)
+void PYD1798_pin_out_1(void)
 {
 
 	GPIOA->CRL &= 0xFFFFFF0F;  
@@ -191,15 +211,48 @@ void PYD1798_pin_out(void)
 }
 
 /*-----------------------------------------------------------------------
-	PYD1798
+	PYD1798 PC10
 ------------------------------------------------------------------------*/
-void PYD1798_pin_in(void)
+void PYD1798_pin_out_2(void)
 {
 
-	GPIOA->CRL &= 0xFFFFFF0F;  
-	GPIOA->CRL |= 0x00000080;  // 
+//	GPIOC->CRH &= 0xFFFFF0FF;  
+//	GPIOC->CRH |= 0x00000100;  
+
+	GPIOA->CRL &= 0xF0FFFFFF;  	/* PA6 */
+	GPIOA->CRL |= 0x01000000;  
 
 }
+
+
+
+/*-----------------------------------------------------------------------
+	PYD1798  PA1
+------------------------------------------------------------------------*/
+void PYD1798_pin_in_1(void)
+{
+
+	GPIOA->CRL &= 0xFFFFFF0F; 
+	GPIOA->CRL |= 0x00000080;  
+
+}
+
+
+/*-----------------------------------------------------------------------
+	PYD1798  PC10
+------------------------------------------------------------------------*/
+void PYD1798_pin_in_2(void)
+{
+
+//	GPIOC->CRH &= 0xFFFFF0FF;  
+//	GPIOC->CRH |= 0x00000800;  
+	
+	GPIOA->CRL &= 0xF0FFFFFF;  	/* PA6 */
+	GPIOA->CRL |= 0x08000000;  
+
+}
+
+
 
 
 /*-----------------------------------------------------------------------
@@ -207,7 +260,7 @@ void PYD1798_pin_in(void)
 	连续10次数据递增或递减表示有人体移动，保持2s
 	即连续2s内没有检测到一次连续10次递增或递减则清楚人体移动标志
 ------------------------------------------------------------------------*/
-void remove_check(int chl)
+void remove_check_1(int chl)
 {
 	static int old_chl = 0;		/* 前一次的chl保存  */	
 	static int dir = 0;			/* 前一比较是递增 1，还是递减 0  */
@@ -246,14 +299,14 @@ void remove_check(int chl)
 
 	
 	if(count >= 10){					/* 连续10次以上递增或递减 */
-		sensors_value.removeFlag = 1;	/* 检测到人体移动 */
+		sensors_value.removeFlag |= 0x01;	/* 检测到人体移动 */
 		uncount = 0;	
 	}else{
 		uncount++;
 	}
 
-	if((sensors_value.removeFlag == 1) && uncount > 200){	/* 连续200次没有检测到人体移动 */
-		sensors_value.removeFlag = 0;	/* 取消人体移动标志 */
+	if((sensors_value.removeFlag & 0x01) && (uncount > MOTION_CLEAR_TIME)){	/* 连续200次没有检测到人体移动 */
+		sensors_value.removeFlag &= (~0x01);	/* 取消人体移动标志 */
 
 	}
 
@@ -261,19 +314,87 @@ void remove_check(int chl)
 }
 
 
+/*-----------------------------------------------------------------------
+	判断是否有人体移动
+	连续10次数据递增或递减表示有人体移动，保持2s
+	即连续2s内没有检测到一次连续10次递增或递减则清楚人体移动标志
+------------------------------------------------------------------------*/
+void remove_check_2(int chl)
+{
+	static int old_chl = 0;		/* 前一次的chl保存  */	
+	static int dir = 0;			/* 前一比较是递增 1，还是递减 0  */
+	static int count = 0;		/* 连续递增或递减次数  */
+	static int uncount = 0;		/* 连续多少次没有检测到人体移动  */
+
+
+	if(dir){					/* 前一次递增 */
+		if(chl > old_chl){		/* 递增 */
+			count++;
+		}else{
+			if(chl < old_chl){	/* 递减 */
+				count = 1;
+				dir = 0;
+			}else{
+				count = 0;	
+			}
+		}
+
+	}else{
+
+		if(chl < old_chl){		/* 递减 */
+			count++;
+		}else{
+			if(chl > old_chl){	/* 递增 */
+				count = 1;
+				dir = 1;
+			}else{
+				count = 0;	
+			}
+		}
+
+	}
+
+	old_chl = chl;				/* 保存数据 */
+
+	
+//	if(count >= 10){					/* 连续10次以上递增或递减 */
+//		sensors_value.removeFlag = 1;	/* 检测到人体移动 */
+//		uncount = 0;	
+//	}else{
+//		uncount++;
+//	}
+
+//	if((sensors_value.removeFlag == 1) && uncount > 200){	/* 连续200次没有检测到人体移动 */
+//		sensors_value.removeFlag = 0;	/* 取消人体移动标志 */
+//	}
+
+
+	if(count >= 10){					/* 连续10次以上递增或递减 */
+		sensors_value.removeFlag |= 0x02;	/* 检测到人体移动 */
+		uncount = 0;	
+	}else{
+		uncount++;
+	}
+
+	if((sensors_value.removeFlag & 0x02) && (uncount > MOTION_CLEAR_TIME)){	/* 连续200次没有检测到人体移动 */
+		sensors_value.removeFlag &= (~0x02);	/* 取消人体移动标志 */
+
+	}
+
+}
 
 
 
 /*-----------------------------------------------------------------------
 	PYD1798
 ------------------------------------------------------------------------*/
-void PYD1798_readdigipyro(void)
+void PYD1798_readdigipyro_1(void)
 {
 	int i, k, PIRval[3] = {0} ;	
 	uint bitmask;
 	
-	PYD1798_pin_out(); 
-	PYD1798_OUT_HIGH();
+	PYD1798_pin_out_1(); 
+	PYD1798_OUT_HIGH_1();
 
 	delay_1us(150);
 	for(k=0; k<2; k++) // get 14bits of DL data for each channel
@@ -283,19 +404,19 @@ void PYD1798_readdigipyro(void)
 		for (i=0; i < 14; i++)
 		{
 			// create low to high transition			
-			PYD1798_OUT_LOW(); 	// Set DL = Low, Low level duration must be > 200 ns (tL)
+			PYD1798_OUT_LOW_1(); 	// Set DL = Low, Low level duration must be > 200 ns (tL)
 
 			delay_1us(1);		// number of nop to be adapted to processor speed
-			PYD1798_OUT_HIGH(); // Set DL = High, High level duration must be > 200 ns (tH)
+			PYD1798_OUT_HIGH_1(); // Set DL = High, High level duration must be > 200 ns (tH)
 			delay_1us(1); 
 
-			PYD1798_pin_in(); 	// Configure DL as Input
+			PYD1798_pin_in_1(); 	// Configure DL as Input
 			delay_1us(8); 		// Wait for stable signal
-			if (PYD1798_IN_READ()) PIRval[k] |= bitmask; // If DL High set masked bit in PIRVal
+			if (PYD1798_IN_READ_1()) PIRval[k] |= bitmask; // If DL High set masked bit in PIRVal
 			bitmask >>= 1;
 			
-			PYD1798_OUT_LOW();
-			PYD1798_pin_out(); 
+			PYD1798_OUT_LOW_1();
+			PYD1798_pin_out_1(); 
 		}
 		
 	}
@@ -303,14 +424,67 @@ void PYD1798_readdigipyro(void)
 //	sensors_printf(" [%d](%d)(%d)", PIRval[0], PIRval[1], (PIRval[1] -6700)/80 + 25);
 //	sensors_printf(" %d", PIRval[0]);
 
-	PYD1798_OUT_LOW();  // Set DL = Low
+	PYD1798_OUT_LOW_1();  // Set DL = Low
 	delay_1us(1);	
 
-	PYD1798_pin_in(); 	 // Configure DL as Input
+	PYD1798_pin_in_1(); 	 // Configure DL as Input
 	
-	remove_check(PIRval[0]);	/* 检测人体移动 */
+	remove_check_1(PIRval[0]);	/* 检测人体移动 */
 
 }
+
+
+
+/*-----------------------------------------------------------------------
+	PYD1798
+------------------------------------------------------------------------*/
+void PYD1798_readdigipyro_2(void)
+{
+	int i, k, PIRval[3] = {0} ;	
+	uint bitmask;
+	
+	PYD1798_pin_out_2(); 
+	PYD1798_OUT_HIGH_2();
+
+	delay_1us(150);
+	for(k=0; k<2; k++) // get 14bits of DL data for each channel
+	{
+		bitmask = 0x2000; // Set BitPos
+		PIRval[k] = 0;
+		for (i=0; i < 14; i++)
+		{
+			// create low to high transition			
+			PYD1798_OUT_LOW_2(); 	// Set DL = Low, Low level duration must be > 200 ns (tL)
+
+			delay_1us(1);		// number of nop to be adapted to processor speed
+			PYD1798_OUT_HIGH_2(); // Set DL = High, High level duration must be > 200 ns (tH)
+			delay_1us(1); 
+
+			PYD1798_pin_in_2(); 	// Configure DL as Input
+			delay_1us(8); 		// Wait for stable signal
+			if (PYD1798_IN_READ_2()) PIRval[k] |= bitmask; // If DL High set masked bit in PIRVal
+			bitmask >>= 1;
+			
+			PYD1798_OUT_LOW_2();
+			PYD1798_pin_out_2(); 
+		}
+		
+	}
+	
+//	sensors_printf(" [%d](%d)(%d)", PIRval[0], PIRval[1], (PIRval[1] -6700)/80 + 25);
+//	sensors_printf(" %d", PIRval[0]);
+
+	PYD1798_OUT_LOW_2();  // Set DL = Low
+	delay_1us(1);	
+
+	PYD1798_pin_in_2(); 	 // Configure DL as Input
+	
+	remove_check_2(PIRval[0]);	/* 检测人体移动 */
+
+}
+
+
+
 
 /*-----------------------------------------------------------------------
 	PYD1798
@@ -322,7 +496,8 @@ void PYD1798_check(void)
 
 	i++;
 	if(i >= 5){
-		PYD1798_readdigipyro();
+		PYD1798_readdigipyro_1();
+		PYD1798_readdigipyro_2();
 		i = 0;
 	}
 
@@ -348,10 +523,23 @@ void smokeModule_gpio_init(void)
 ------------------------------------------------------------------------*/
 void smokeModule_check(void)
 {	
+	static u8 smoke_tmp = 0;
+
 	if(smokeModule_IN_READ()){		
-		sensors_value.smokeModule_value = 1;		
+//		sensors_value.smokeModule_value = 1;		
+		sensors_value.smokeModule_value = 0;		/* hcb，2018.1.25 烟雾实际正常输出是高电平 */	
+		SMOG_ALARM_OFF;
+
 	}else{	
-		sensors_value.smokeModule_value = 0;		
+//		sensors_value.smokeModule_value = 0;	
+		sensors_value.smokeModule_value = 1;		/* 低电平时表示有烟雾 */
+		SMOG_ALARM_ON;
+	}
+
+	/* 检测烟雾是否发生变化 */
+	if(smoke_tmp != sensors_value.smokeModule_value){
+		smoke_tmp = sensors_value.smokeModule_value;
+		ssp_smoke_detect_post(smoke_tmp);
 	}
 
 }
